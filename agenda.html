@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda — Diva Rebel</title>
+<style>
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Light.otf') format('opentype'); font-weight:300; font-style:normal; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-LightItalic.otf') format('opentype'); font-weight:300; font-style:italic; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Regular.otf') format('opentype'); font-weight:400; font-style:normal; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Italic.otf') format('opentype'); font-weight:400; font-style:italic; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Medium.otf') format('opentype'); font-weight:500; font-style:normal; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-MediumItalic.otf') format('opentype'); font-weight:500; font-style:italic; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Bold.otf') format('opentype'); font-weight:700; font-style:normal; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-BoldItalic.otf') format('opentype'); font-weight:700; font-style:italic; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-Black.otf') format('opentype'); font-weight:900; font-style:normal; }
+@font-face { font-family:'Satoshi'; src:url('../satoshi/Satoshi-BlackItalic.otf') format('opentype'); font-weight:900; font-style:italic; }
+
+:root {
+  --mist:      #bebebf;
+  --pebble:    #9fa4a2;
+  --limestone: #dcdad9;
+  --graphite:  #494947;
+  --gravel:    #7b787a;
+  --obsidian:  #1a1a1a;
+  --white:     #ffffff;
+  --surface:   #f5f4f3;
+  --border:    #e8e6e5;
+  --hp:        60px; /* hour height in pixels */
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  font-family:'Satoshi', -apple-system, sans-serif;
+  background: var(--limestone);
+  color: var(--obsidian);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--obsidian);
+  height: 56px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #2e2e2c;
+}
+.logo {
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--white);
+  white-space: nowrap;
+}
+.logo em { color: var(--pebble); font-style: normal; }
+
+.week-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  min-width: 220px;
+  text-align: center;
+}
+.nav-group { display:flex; align-items:center; gap:6px; }
+.btn-icon {
+  background: none;
+  border: 1px solid #333331;
+  color: var(--pebble);
+  width: 30px; height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items:center; justify-content:center;
+  transition: all .15s;
+  line-height: 1;
+}
+.btn-icon:hover { background: #2e2e2c; border-color: var(--gravel); color: var(--white); }
+.btn-today {
+  background: none;
+  border: 1px solid #333331;
+  color: var(--limestone);
+  padding: 0 12px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  transition: all .15s;
+}
+.btn-today:hover { background: #2e2e2c; }
+
+.sync-badge {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gravel);
+  padding: 3px 8px;
+  border: 1px solid #2e2e2c;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.sync-badge.ok  { color: #6ab04c; border-color: #2d4a20; }
+.sync-badge.err { color: #c0392b; border-color: #4a1a1a; }
+
+.btn-auth {
+  background: var(--graphite);
+  border: none;
+  color: var(--limestone);
+  padding: 0 14px;
+  height: 30px;
+  border-radius: 4px;
+  font-family: 'Satoshi', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-auth:hover { background: var(--gravel); }
+.btn-auth.connected { background: #1e4620; color: #a5d6a7; cursor: default; }
+
+/* push items right */
+.spacer { flex: 1; }
+
+/* ── MAIN LAYOUT ── */
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* ── CALENDAR ── */
+.cal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--white);
+  min-width: 0;
+}
+
+/* Day header row */
+.day-headers {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--white);
+}
+.dh-spacer { border-right: 1px solid var(--border); }
+.dh {
+  padding: 10px 6px 8px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.dh .dn { font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gravel); }
+.dh .dd { font-size:22px; font-weight:700; color:var(--graphite); line-height:1.1; margin-top:1px; }
+.dh.today .dd {
+  background: var(--obsidian); color: var(--white);
+  width:34px; height:34px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  margin: 1px auto 0; font-size:16px;
+}
+.dh.today .dn { color: var(--obsidian); }
+
+/* Scrollable grid */
+.cal-scroll {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+.cal-scroll::-webkit-scrollbar { width:5px; }
+.cal-scroll::-webkit-scrollbar-track { background:var(--surface); }
+.cal-scroll::-webkit-scrollbar-thumb { background:var(--mist); border-radius:3px; }
+
+.time-grid {
+  display: grid;
+  grid-template-columns: 52px repeat(7, 1fr);
+  position: relative;
+}
+.tc { /* time column */
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.tl { /* time label */
+  position: absolute;
+  right: 7px;
+  font-size:9px;
+  font-weight:500;
+  letter-spacing:.04em;
+  color: var(--gravel);
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+.dc { /* day column */
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.hl { position:absolute; left:0; right:0; border-top:1px solid var(--border); pointer-events:none; }
+.ml { position:absolute; left:0; right:0; border-top:1px dashed #f0edec; pointer-events:none; }
+
+/* Now line */
+.now-line {
+  position: absolute;
+  left: 0; right: 0;
+  border-top: 2px solid #c0392b;
+  pointer-events: none;
+  z-index: 8;
+}
+.now-line::before {
+  content:'';
+  position:absolute; left:-4px; top:-4px;
+  width:8px; height:8px;
+  border-radius:50%;
+  background:#c0392b;
+}
+
+/* Events */
+.ev {
+  position: absolute;
+  left: 2px; right: 2px;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  z-index: 5;
+  transition: filter .1s, z-index 0s;
+  border-left: 3px solid rgba(0,0,0,0.25);
+}
+.ev:hover { filter:brightness(.88); z-index:20; }
+.ev .et { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35; }
+.ev .em { font-size:9px; opacity:.75; font-weight:400; }
+
+/* Category colours */
+.c-exercise { background:#3a3a38; color:#dcdad9; }
+.c-yoga     { background:#6b7472; color:#f0eeec; }
+.c-work     { background:#1a3d18; color:#b8d9b5; }
+.c-family   { background:#5c4220; color:#f5dcb8; }
+.c-study    { background:#1a3050; color:#b5cde8; }
+.c-mentor   { background:#3d2860; color:#cfc0ec; }
+.c-meeting  { background:#5c1515; color:#f2c0c0; }
+.c-home     { background:#46403e; color:#d9d5d2; }
+.c-default  { background:var(--graphite); color:var(--limestone); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background: var(--obsidian);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #2e2e2c;
+}
+.sb-head {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #2e2e2c;
+  flex-shrink: 0;
+}
+.sb-head h2 {
+  font-size:10px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--pebble);
+}
+.sb-head p { font-size:11px; color:var(--gravel); margin-top:2px; }
+
+.sb-body {
+  flex:1; overflow-y:auto; padding:8px 0;
+}
+.sb-body::-webkit-scrollbar { width:3px; }
+.sb-body::-webkit-scrollbar-thumb { background:#2e2e2c; border-radius:2px; }
+
+.sg { margin-bottom:2px; }
+.sg-label {
+  padding:8px 18px 4px;
+  font-size:9px; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase;
+  color:var(--gravel);
+}
+.ti {
+  padding:7px 18px;
+  display:flex; align-items:flex-start; gap:9px;
+  cursor:pointer;
+  transition:background .1s;
+}
+.ti:hover { background:rgba(255,255,255,0.04); }
+.pdot {
+  width:6px; height:6px; border-radius:50%;
+  flex-shrink:0; margin-top:4px;
+}
+.pdot.urgent { background:#c0392b; }
+.pdot.high   { background:#d4812a; }
+.pdot.normal { background:var(--gravel); }
+.pdot.low    { background:#2e2e2c; }
+.tc-wrap { flex:1; min-width:0; }
+.tn { font-size:11px; color:var(--limestone); line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tm { font-size:9px; color:var(--gravel); margin-top:1px; }
+
+.sb-empty { padding:24px 18px; font-size:11px; color:var(--gravel); line-height:1.6; }
+
+/* ── SETUP OVERLAY ── */
+.overlay {
+  position:fixed; inset:0;
+  background:rgba(10,10,10,.92);
+  display:flex; align-items:center; justify-content:center;
+  z-index:200;
+  backdrop-filter:blur(3px);
+}
+.setup-card {
+  background:var(--white);
+  border-radius:8px;
+  padding:40px 36px;
+  width:460px; max-width:92vw;
+}
+.setup-card h1 {
+  font-size:22px; font-weight:900; letter-spacing:-.02em;
+  color:var(--obsidian); margin-bottom:4px;
+}
+.setup-card > p {
+  font-size:12px; color:var(--gravel); line-height:1.6;
+  margin-bottom:26px;
+}
+.sf { margin-bottom:14px; }
+.sf label {
+  display:block; font-size:10px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase;
+  color:var(--graphite); margin-bottom:5px;
+}
+.sf input {
+  width:100%; padding:9px 12px;
+  border:1px solid var(--border);
+  border-radius:4px;
+  font-family:'Satoshi', sans-serif;
+  font-size:12px; color:var(--obsidian);
+  background:var(--surface); outline:none;
+  transition:border-color .15s;
+}
+.sf input:focus { border-color:var(--graphite); }
+.sh { font-size:10px; color:var(--pebble); margin-top:4px; line-height:1.5; }
+.sh a { color:var(--graphite); }
+.sa { display:flex; gap:10px; margin-top:26px; }
+.btn-primary {
+  flex:1; background:var(--obsidian); color:var(--white);
+  border:none; padding:11px;
+  border-radius:4px;
+  font-family:'Satoshi', sans-serif;
+  font-size:12px; font-weight:700; letter-spacing:.06em;
+  cursor:pointer; transition:background .15s;
+}
+.btn-primary:hover { background:var(--graphite); }
+.btn-secondary {
+  background:none; color:var(--gravel);
+  border:1px solid var(--border);
+  padding:11px 18px; border-radius:4px;
+  font-family:'Satoshi', sans-serif;
+  font-size:12px; cursor:pointer;
+  transition:all .15s;
+}
+.btn-secondary:hover { border-color:var(--gravel); color:var(--graphite); }
+
+/* legend */
+.legend {
+  display:flex; flex-wrap:wrap; gap:6px;
+  padding:10px 18px 0;
+}
+.leg { display:flex; align-items:center; gap:5px; }
+.leg-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+.leg-txt { font-size:9px; color:var(--gravel); }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <div class="logo">Diva <em>Rebel</em></div>
+  <div class="spacer"></div>
+  <div class="nav-group">
+    <button class="btn-today" onclick="goToday()">Hoje</button>
+    <button class="btn-icon" onclick="prevWeek()">&#8249;</button>
+    <button class="btn-icon" onclick="nextWeek()">&#8250;</button>
+  </div>
+  <div class="week-label" id="weekLabel">—</div>
+  <div class="spacer"></div>
+  <span class="sync-badge" id="gcalBadge">● Google</span>
+  <span class="sync-badge" id="cuBadge">● ClickUp</span>
+  <button class="btn-auth" id="authBtn" onclick="handleAuth()">Conectar Google</button>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- CALENDAR -->
+  <div class="cal">
+    <div class="day-headers" id="dayHeaders"></div>
+    <div class="cal-scroll" id="calScroll">
+      <div class="time-grid" id="timeGrid"></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <h2>ClickUp</h2>
+      <p id="sbSubtitle">Tarefas desta semana</p>
+    </div>
+    <div class="sb-body" id="sbBody">
+      <div class="sb-empty">Carregando…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── SETUP MODAL ── -->
+<div class="overlay" id="setupOverlay">
+  <div class="setup-card">
+    <h1>Configurar Agenda</h1>
+    <p>Conecte seu Google Agenda e ClickUp para sincronização em tempo real. Suas credenciais ficam salvas apenas neste navegador.</p>
+
+    <div class="sf">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="inp-gcid" placeholder="000000000000-xxxx.apps.googleusercontent.com">
+      <div class="sh">Crie em <a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com</a> → Credenciais → OAuth 2.0 para aplicativo da Web. Adicione <code>file://</code> como origem autorizada.</div>
+    </div>
+
+    <div class="sf">
+      <label>ClickUp Personal API Token</label>
+      <input type="text" id="inp-ctoken" placeholder="pk_xxxxxxxxxxxxxxxxxx">
+      <div class="sh">ClickUp → seu avatar → Configurações → Apps → Gerar Token Pessoal</div>
+    </div>
+
+    <div class="sa">
+      <button class="btn-secondary" onclick="useDemo()">Usar dados demo</button>
+      <button class="btn-primary" onclick="saveAndConnect()">Salvar e conectar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════
+const CFG = {
+  get gcid()    { return localStorage.getItem('ag_gcid')    || ''; },
+  get ctoken()  { return localStorage.getItem('ag_ctoken')  || ''; },
+  set gcid(v)   { localStorage.setItem('ag_gcid', v);    },
+  set ctoken(v) { localStorage.setItem('ag_ctoken', v);  },
+};
+
+// ════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════
+const DAYS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const S_HOUR = 5;    // grid start 5am
+const E_HOUR = 23;   // grid end 11pm
+const HP     = 60;   // pixels per hour
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let monday    = getMonday(new Date());
+let gapiReady = false;
+let gisReady  = false;
+let tokenCli;
+let signed    = false;
+let gcEvents  = [];
+let cuTasks   = [];
+
+// ════════════════════════════════════════════
+// SETUP FLOW
+// ════════════════════════════════════════════
+function checkSetup() {
+  document.getElementById('inp-gcid').value    = CFG.gcid;
+  document.getElementById('inp-ctoken').value  = CFG.ctoken;
+  if (CFG.gcid && CFG.ctoken) {
+    closeSetup();
+    bootApis();
+  }
+}
+
+function saveAndConnect() {
+  const g = document.getElementById('inp-gcid').value.trim();
+  const c = document.getElementById('inp-ctoken').value.trim();
+  if (!g || !c) { alert('Preencha os dois campos.'); return; }
+  CFG.gcid   = g;
+  CFG.ctoken = c;
+  closeSetup();
+  bootApis();
+}
+
+function useDemo() {
+  closeSetup();
+  gcEvents = DEMO_EVENTS;
+  cuTasks  = DEMO_TASKS;
+  renderCal();
+  renderSidebar();
+  setBadge('gcalBadge','Demo','');
+  setBadge('cuBadge','Demo','');
+  document.getElementById('authBtn').style.display = 'none';
+}
+
+function closeSetup() { document.getElementById('setupOverlay').style.display = 'none'; }
+
+// ════════════════════════════════════════════
+// GOOGLE CALENDAR
+// ════════════════════════════════════════════
+function bootApis() {
+  loadGapi();
+  loadGis();
+  loadClickup();
+}
+
+function loadGapi() {
+  const s = document.createElement('script');
+  s.src = 'https://apis.google.com/js/api.js';
+  s.onload = () => {
+    gapi.load('client', async () => {
+      await gapi.client.init({
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+      });
+      gapiReady = true;
+      tryInitToken();
+    });
+  };
+  document.head.appendChild(s);
+}
+
+function loadGis() {
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = () => { gisReady = true; tryInitToken(); };
+  document.head.appendChild(s);
+}
+
+function tryInitToken() {
+  if (!gapiReady || !gisReady) return;
+  tokenCli = google.accounts.oauth2.initTokenClient({
+    client_id: CFG.gcid,
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
+    callback: async resp => {
+      if (resp.error) { setBadge('gcalBadge','Erro','err'); return; }
+      signed = true;
+      document.getElementById('authBtn').classList.add('connected');
+      document.getElementById('authBtn').textContent = 'Google ✓';
+      setBadge('gcalBadge','Sincronizado','ok');
+      await fetchGcal();
+    },
+  });
+}
+
+function handleAuth() {
+  if (!tokenCli) { alert('Aguarde a inicialização ou verifique o Client ID.'); return; }
+  tokenCli.requestAccessToken(gapi.client.getToken() ? {} : { prompt:'consent' });
+}
+
+async function fetchGcal() {
+  const start = new Date(monday); start.setHours(0,0,0,0);
+  const end   = new Date(start);  end.setDate(end.getDate()+7);
+  try {
+    const r = await gapi.client.calendar.events.list({
+      calendarId:'primary',
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 150,
+    });
+    gcEvents = r.result.items || [];
+    setBadge('gcalBadge','Sincronizado','ok');
+    renderCal();
+  } catch(e) {
+    console.error(e);
+    setBadge('gcalBadge','Erro','err');
+  }
+}
+
+// ════════════════════════════════════════════
+// CLICKUP
+// ════════════════════════════════════════════
+async function loadClickup() {
+  if (!CFG.ctoken) { setBadge('cuBadge','Sem token','err'); return; }
+  const start = new Date(monday); start.setHours(0,0,0,0);
+  const end   = new Date(start);  end.setDate(end.getDate()+7);
+  try {
+    const r = await fetch(
+      `https://api.clickup.com/api/v2/team/90131929380/task?due_date_gt=${start.getTime()}&due_date_lt=${end.getTime()}&include_closed=false&order_by=due_date`,
+      { headers: { Authorization: CFG.ctoken } }
+    );
+    const data = await r.json();
+    cuTasks = data.tasks || [];
+    setBadge('cuBadge','Sincronizado','ok');
+    renderSidebar();
+  } catch(e) {
+    console.error(e);
+    setBadge('cuBadge','Erro','err');
+  }
+}
+
+// ════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════
+function getMonday(d) {
+  const day = new Date(d); day.setHours(0,0,0,0);
+  const diff = day.getDay()===0 ? -6 : 1-day.getDay();
+  day.setDate(day.getDate()+diff);
+  return day;
+}
+function prevWeek() { monday = new Date(monday); monday.setDate(monday.getDate()-7); refresh(); }
+function nextWeek() { monday = new Date(monday); monday.setDate(monday.getDate()+7); refresh(); }
+function goToday()  { monday = getMonday(new Date()); refresh(); }
+
+async function refresh() {
+  renderDayHeaders();
+  renderTimeGrid();
+  if (signed) await fetchGcal();
+  await loadClickup();
+}
+
+// ════════════════════════════════════════════
+// RENDER — CALENDAR
+// ════════════════════════════════════════════
+function renderCal() { renderDayHeaders(); renderTimeGrid(); }
+
+function renderDayHeaders() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const hdr   = document.getElementById('dayHeaders');
+  hdr.innerHTML = '<div class="dh-spacer"></div>';
+  for (let i=0;i<7;i++) {
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    const isToday = d.getTime()===today.getTime();
+    const el = document.createElement('div');
+    el.className = 'dh'+(isToday?' today':'');
+    el.innerHTML = `<div class="dn">${DAYS[d.getDay()]}</div><div class="dd">${d.getDate()}</div>`;
+    hdr.appendChild(el);
+  }
+  // week label
+  const end = new Date(monday); end.setDate(end.getDate()+6);
+  const sm = MONTHS[monday.getMonth()].slice(0,3);
+  const em = MONTHS[end.getMonth()].slice(0,3);
+  document.getElementById('weekLabel').textContent =
+    monday.getMonth()===end.getMonth()
+      ? `${monday.getDate()} — ${end.getDate()} de ${sm} ${end.getFullYear()}`
+      : `${monday.getDate()} ${sm} — ${end.getDate()} ${em} ${end.getFullYear()}`;
+}
+
+function renderTimeGrid() {
+  const grid = document.getElementById('timeGrid');
+  grid.innerHTML = '';
+  const totalH = E_HOUR - S_HOUR;
+  grid.style.minHeight = (totalH * HP)+'px';
+
+  // Time column
+  const tc = document.createElement('div');
+  tc.className = 'tc';
+  for (let h=S_HOUR; h<=E_HOUR; h++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'tl';
+    lbl.style.top = ((h-S_HOUR)*HP)+'px';
+    lbl.textContent = h===0?'':(h<12?`${h}am`:h===12?'12pm':`${h-12}pm`);
+    tc.appendChild(lbl);
+  }
+  grid.appendChild(tc);
+
+  // Day columns
+  const today = new Date(); today.setHours(0,0,0,0);
+  for (let i=0;i<7;i++) {
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    const dc = document.createElement('div');
+    dc.className = 'dc';
+    dc.id = `dc${i}`;
+
+    // Hour/half lines
+    for (let h=S_HOUR; h<=E_HOUR; h++) {
+      const hl = document.createElement('div');
+      hl.className = 'hl';
+      hl.style.top = ((h-S_HOUR)*HP)+'px';
+      dc.appendChild(hl);
+      if (h<E_HOUR) {
+        const ml = document.createElement('div');
+        ml.className = 'ml';
+        ml.style.top = ((h-S_HOUR+.5)*HP)+'px';
+        dc.appendChild(ml);
+      }
+    }
+
+    // Now line
+    if (d.getTime()===today.getTime()) {
+      const now = new Date();
+      const min = (now.getHours()-S_HOUR)*60+now.getMinutes();
+      if (min>=0) {
+        const nl = document.createElement('div');
+        nl.className = 'now-line';
+        nl.style.top = (min/60*HP)+'px';
+        dc.appendChild(nl);
+      }
+    }
+
+    grid.appendChild(dc);
+  }
+
+  placeEvents();
+}
+
+function categorize(t='') {
+  const s = t.toLowerCase();
+  if (/luta|muscula/.test(s))              return 'c-exercise';
+  if (/yoga/.test(s))                      return 'c-yoga';
+  if (/bloco ouro|trabalho/.test(s))       return 'c-work';
+  if (/café|almoço|crianças|cozinhão|roupa/.test(s)) return 'c-family';
+  if (/inglês|leitura/.test(s))            return 'c-study';
+  if (/mentor|aula/.test(s))               return 'c-mentor';
+  if (/reunião|venda|treinamento/.test(s)) return 'c-meeting';
+  if (/limpeza|casa/.test(s))              return 'c-home';
+  return 'c-default';
+}
+
+function placeEvents() {
+  gcEvents.forEach(ev => {
+    if (!ev.start?.dateTime) return;
+    const s = new Date(ev.start.dateTime);
+    const e = new Date(ev.end.dateTime);
+    const sd = new Date(s); sd.setHours(0,0,0,0);
+    const ci = Math.round((sd-monday)/86400000);
+    if (ci<0||ci>6) return;
+    const col = document.getElementById(`dc${ci}`);
+    if (!col) return;
+
+    const topMin = (s.getHours()-S_HOUR)*60+s.getMinutes();
+    const durMin = (e-s)/60000;
+    const top    = topMin/60*HP;
+    const height = Math.max(durMin/60*HP, 18);
+
+    const div = document.createElement('div');
+    div.className = `ev ${categorize(ev.summary||'')}`;
+    div.style.top    = top+'px';
+    div.style.height = height+'px';
+    div.title = `${ev.summary}\n${fmt(s)}–${fmt(e)}`;
+    div.innerHTML = `<div class="et">${ev.summary||''}</div>`+
+      (height>28?`<div class="em">${fmt(s)}–${fmt(e)}</div>`:'');
+    div.onclick = () => ev.htmlLink && window.open(ev.htmlLink,'_blank');
+    col.appendChild(div);
+  });
+}
+
+function fmt(d) {
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ════════════════════════════════════════════
+// RENDER — SIDEBAR
+// ════════════════════════════════════════════
+const DAY_ORDER = ['segunda','terça','quarta','quinta','sexta','sábado','domingo'];
+const DAY_LABEL = { segunda:'Seg',terça:'Ter',quarta:'Qua',quinta:'Qui',sexta:'Sex',sábado:'Sáb',domingo:'Dom' };
+
+function renderSidebar() {
+  const body = document.getElementById('sbBody');
+  if (!cuTasks.length) {
+    body.innerHTML = '<div class="sb-empty">Nenhuma tarefa esta semana.</div>';
+    return;
+  }
+  const groups = {};
+  cuTasks.forEach(t => {
+    const k = (t.status||'outros').toLowerCase();
+    if (!groups[k]) groups[k]=[];
+    groups[k].push(t);
+  });
+
+  const keys = [...DAY_ORDER.filter(d=>groups[d]), ...Object.keys(groups).filter(k=>!DAY_ORDER.includes(k))];
+  body.innerHTML = '';
+
+  keys.forEach(key => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sg';
+    wrap.innerHTML = `<div class="sg-label">${DAY_LABEL[key]||key}</div>`;
+
+    groups[key].forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'ti';
+      item.innerHTML =
+        `<div class="pdot ${t.priority||'normal'}"></div>`+
+        `<div class="tc-wrap">`+
+          `<div class="tn">${t.name}</div>`+
+          `<div class="tm">${t.list?.name||''}</div>`+
+        `</div>`;
+      item.onclick = () => t.url && window.open(t.url,'_blank');
+      wrap.appendChild(item);
+    });
+    body.appendChild(wrap);
+  });
+}
+
+// ════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════
+function setBadge(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = '● '+text;
+  el.className = 'sync-badge'+(cls?' '+cls:'');
+}
+
+// ════════════════════════════════════════════
+// DEMO DATA — semana de 09/06/2026
+// ════════════════════════════════════════════
+const DEMO_EVENTS = [
+  // SEG 09
+  {summary:'💪 Musculação (flex)',       start:{dateTime:'2026-06-09T07:30:00-03:00'},end:{dateTime:'2026-06-09T08:30:00-03:00'},htmlLink:''},
+  {summary:'🧘 Yoga',                    start:{dateTime:'2026-06-09T08:30:00-03:00'},end:{dateTime:'2026-06-09T09:15:00-03:00'},htmlLink:''},
+  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-09T09:30:00-03:00'},end:{dateTime:'2026-06-09T10:30:00-03:00'},htmlLink:''},
+  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-09T10:30:00-03:00'},end:{dateTime:'2026-06-09T11:30:00-03:00'},htmlLink:''},
+  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-09T11:30:00-03:00'},end:{dateTime:'2026-06-09T13:30:00-03:00'},htmlLink:''},
+  {summary:'👥 Treinamento com Alunas',  start:{dateTime:'2026-06-09T15:30:00-03:00'},end:{dateTime:'2026-06-09T16:30:00-03:00'},htmlLink:''},
+  // TER 10
+  {summary:'💪 Musculação',              start:{dateTime:'2026-06-10T06:00:00-03:00'},end:{dateTime:'2026-06-10T07:00:00-03:00'},htmlLink:''},
+  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-10T07:00:00-03:00'},end:{dateTime:'2026-06-10T08:00:00-03:00'},htmlLink:''},
+  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-10T08:00:00-03:00'},end:{dateTime:'2026-06-10T09:30:00-03:00'},htmlLink:''},
+  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-10T09:30:00-03:00'},end:{dateTime:'2026-06-10T10:30:00-03:00'},htmlLink:''},
+  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-10T10:30:00-03:00'},end:{dateTime:'2026-06-10T11:30:00-03:00'},htmlLink:''},
+  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-10T11:30:00-03:00'},end:{dateTime:'2026-06-10T13:30:00-03:00'},htmlLink:''},
+  {summary:'🎯 Reunião — Dra. Camila Dantas',start:{dateTime:'2026-06-10T14:00:00-03:00'},end:{dateTime:'2026-06-10T15:00:00-03:00'},htmlLink:''},
+  // QUA 11
+  {summary:'💪 Musculação',              start:{dateTime:'2026-06-11T06:00:00-03:00'},end:{dateTime:'2026-06-11T07:00:00-03:00'},htmlLink:''},
+  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-11T07:00:00-03:00'},end:{dateTime:'2026-06-11T08:00:00-03:00'},htmlLink:''},
+  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-11T08:00:00-03:00'},end:{dateTime:'2026-06-11T09:30:00-03:00'},htmlLink:''},
+  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-11T09:30:00-03:00'},end:{dateTime:'2026-06-11T10:00:00-03:00'},htmlLink:''},
+  {summary:'🎯 Reunião — Dra. Bia Bento',start:{dateTime:'2026-06-11T10:00:00-03:00'},end:{dateTime:'2026-06-11T11:00:00-03:00'},htmlLink:''},
+  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-11T10:30:00-03:00'},end:{dateTime:'2026-06-11T11:30:00-03:00'},htmlLink:''},
+  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-11T11:30:00-03:00'},end:{dateTime:'2026-06-11T13:30:00-03:00'},htmlLink:''},
+  {summary:'🧹 Limpeza da Casa',         start:{dateTime:'2026-06-11T13:30:00-03:00'},end:{dateTime:'2026-06-11T16:00:00-03:00'},htmlLink:''},
+  {summary:'🧘 Yoga (noite)',            start:{dateTime:'2026-06-11T19:00:00-03:00'},end:{dateTime:'2026-06-11T19:45:00-03:00'},htmlLink:''},
+  // QUI 12
+  {summary:'💪 Musculação (flex)',       start:{dateTime:'2026-06-12T07:30:00-03:00'},end:{dateTime:'2026-06-12T08:30:00-03:00'},htmlLink:''},
+  {summary:'🧘 Yoga',                    start:{dateTime:'2026-06-12T08:30:00-03:00'},end:{dateTime:'2026-06-12T09:15:00-03:00'},htmlLink:''},
+  {summary:'🎓 Aula Mentor',             start:{dateTime:'2026-06-12T09:00:00-03:00'},end:{dateTime:'2026-06-12T11:00:00-03:00'},htmlLink:''},
+  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-12T09:30:00-03:00'},end:{dateTime:'2026-06-12T10:30:00-03:00'},htmlLink:''},
+  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-12T10:30:00-03:00'},end:{dateTime:'2026-06-12T11:30:00-03:00'},htmlLink:''},
+  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-12T11:30:00-03:00'},end:{dateTime:'2026-06-12T13:30:00-03:00'},htmlLink:''},
+  // SEX 13
+  {summary:'💪 Musculação',              start:{dateTime:'2026-06-13T06:00:00-03:00'},end:{dateTime:'2026-06-13T07:00:00-03:00'},htmlLink:''},
+  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-13T07:00:00-03:00'},end:{dateTime:'2026-06-13T08:00:00-03:00'},htmlLink:''},
+  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-13T08:00:00-03:00'},end:{dateTime:'2026-06-13T09:30:00-03:00'},htmlLink:''},
+  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-13T09:30:00-03:00'},end:{dateTime:'2026-06-13T10:30:00-03:00'},htmlLink:''},
+  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-13T10:30:00-03:00'},end:{dateTime:'2026-06-13T11:30:00-03:00'},htmlLink:''},
+  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-13T11:30:00-03:00'},end:{dateTime:'2026-06-13T13:30:00-03:00'},htmlLink:''},
+  // SÁB 14
+  {summary:'🎓 Aula Mentor (fim de semana)',start:{dateTime:'2026-06-14T09:00:00-03:00'},end:{dateTime:'2026-06-14T11:00:00-03:00'},htmlLink:''},
+  // DOM 15
+  {summary:'🍳 Cozinhão + Roupa da Semana',start:{dateTime:'2026-06-15T09:00:00-03:00'},end:{dateTime:'2026-06-15T13:00:00-03:00'},htmlLink:''},
+];
+
+const DEMO_TASKS = [
+  {name:'👥 Treinamento com Alunas ⚡',       status:'segunda', priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahwmekv'},
+  {name:'🎯 Reunião — Dra. Camila Dantas ⚡', status:'terça',   priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxca0c'},
+  {name:'🟢 BLOCO OURO — Serviço Clientes',   status:'terça',   priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyngu'},
+  {name:'🎯 Reunião — Dra. Bia Bento ⚡',     status:'quarta',  priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxdu1z'},
+  {name:'🟢 BLOCO OURO — Serviço Clientes',   status:'quarta',  priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyp03'},
+  {name:'🟤 BLOCO BRONZE — Vendas',            status:'quarta',  priority:'high',   list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxypb6'},
+  {name:'💛 Tarde Livre — Marido Folga',       status:'quinta',  priority:'low',    list:{name:'MAPA ROTINA ALINE'}, url:''},
+  {name:'🟤 BLOCO BRONZE — Vendas',            status:'sexta',   priority:'high',   list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyq5v'},
+  {name:'🍳 Cozinhão + Roupa da Semana',       status:'domingo', priority:'high',   list:{name:'Sprint da Semana'},  url:'https://app.clickup.com/t/86ahxyq83'},
+];
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  renderCal();
+  checkSetup();
+
+  // Refresh now-line every minute
+  setInterval(() => { renderCal(); }, 60000);
+
+  // Scroll to 6am
+  setTimeout(() => {
+    const s = document.getElementById('calScroll');
+    if (s) s.scrollTop = (6-S_HOUR)*HP - 10;
+  }, 80);
+});
+</script>
+</body>
+</html>
