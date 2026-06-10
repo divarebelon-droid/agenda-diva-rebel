@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agenda — Diva Rebel</title>
+<title>Horários — Aline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-
 :root {
   --mist:      #bebebf;
   --pebble:    #9fa4a2;
@@ -17,884 +17,637 @@
   --white:     #ffffff;
   --surface:   #f5f4f3;
   --border:    #e8e6e5;
-  --hp:        60px; /* hour height in pixels */
+  --avail:     #ffffff;
+  --busy-bg:   #f0edeb;
+  --booked-bg: #edf7ed;
+  --booked-txt:#1b5e20;
 }
-*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family:'Plus Jakarta Sans',-apple-system,sans-serif;
-  background: var(--limestone);
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--surface);
   color: var(--obsidian);
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  min-height: 100vh;
 }
 
 /* ── HEADER ── */
 .header {
   background: var(--obsidian);
-  height: 56px;
-  padding: 0 20px;
+  padding: 18px 28px;
   display: flex;
   align-items: center;
   gap: 16px;
-  flex-shrink: 0;
-  border-bottom: 1px solid #2e2e2c;
+  position: sticky; top: 0; z-index: 50;
 }
-.logo {
-  font-weight: 900;
-  font-size: 14px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--white);
-  white-space: nowrap;
+.hinfo h1 { font-size: 18px; font-weight: 800; color: var(--white); letter-spacing: -.02em; }
+.hinfo p  { font-size: 11px; color: var(--pebble); margin-top: 1px; }
+.spacer   { flex: 1; }
+
+.week-nav { display: flex; align-items: center; gap: 8px; }
+.nav-btn, .btn-cfg, .btn-today {
+  height: 32px;
+  border: 1px solid #2e2e2c;
+  background: none;
+  color: var(--pebble);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  transition: all .15s;
+  display: flex; align-items: center; justify-content: center;
 }
-.logo em { color: var(--pebble); font-style: normal; }
+.nav-btn  { width: 32px; font-size: 18px; }
+.btn-today{ padding: 0 14px; font-weight: 600; color: var(--limestone); }
+.btn-cfg  { width: 32px; font-size: 14px; margin-left: 8px; }
+.nav-btn:hover, .btn-today:hover, .btn-cfg:hover { background: #2e2e2c; color: var(--white); border-color: var(--gravel); }
 
 .week-label {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px; font-weight: 700;
   color: var(--white);
-  min-width: 220px;
-  text-align: center;
+  min-width: 200px; text-align: center;
 }
-.nav-group { display:flex; align-items:center; gap:6px; }
-.btn-icon {
-  background: none;
-  border: 1px solid #333331;
-  color: var(--pebble);
-  width: 30px; height: 30px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex; align-items:center; justify-content:center;
-  transition: all .15s;
-  line-height: 1;
-}
-.btn-icon:hover { background: #2e2e2c; border-color: var(--gravel); color: var(--white); }
-.btn-today {
-  background: none;
-  border: 1px solid #333331;
-  color: var(--limestone);
-  padding: 0 12px;
-  height: 30px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: 'Satoshi', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  transition: all .15s;
-}
-.btn-today:hover { background: #2e2e2c; }
 
-.sync-badge {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gravel);
-  padding: 3px 8px;
-  border: 1px solid #2e2e2c;
-  border-radius: 20px;
-  white-space: nowrap;
-}
-.sync-badge.ok  { color: #6ab04c; border-color: #2d4a20; }
-.sync-badge.err { color: #c0392b; border-color: #4a1a1a; }
-
-.btn-auth {
-  background: var(--graphite);
-  border: none;
-  color: var(--limestone);
-  padding: 0 14px;
-  height: 30px;
-  border-radius: 4px;
-  font-family: 'Satoshi', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all .15s;
-  white-space: nowrap;
-}
-.btn-auth:hover { background: var(--gravel); }
-.btn-auth.connected { background: #1e4620; color: #a5d6a7; cursor: default; }
-.btn-cfg {
-  background: none; border: 1px solid #333331;
-  color: var(--gravel); width:30px; height:30px;
-  border-radius:4px; cursor:pointer; font-size:14px;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .15s; flex-shrink:0;
-}
-.btn-cfg:hover { background:#2e2e2c; color:var(--white); border-color:var(--gravel); }
-
-/* push items right */
-.spacer { flex: 1; }
-
-/* ── MAIN LAYOUT ── */
-.main { display:flex; flex:1; overflow:hidden; }
-
-/* ── CALENDAR ── */
-.cal {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+/* ── SYNC BAR ── */
+.sync-bar {
+  padding: 7px 28px;
   background: var(--white);
-  min-width: 0;
-}
-
-/* Day header row */
-.day-headers {
-  display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--gravel);
+}
+.sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--mist); transition: background .3s; }
+.sdot.ok  { background: #43a047; }
+.sdot.err { background: #e53935; }
+
+/* ── LEGEND ── */
+.legend {
+  padding: 9px 28px;
   background: var(--white);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 20px;
 }
-.dh-spacer { border-right: 1px solid var(--border); }
-.dh {
-  padding: 10px 6px 8px;
-  text-align: center;
-  border-right: 1px solid var(--border);
-}
-.dh .dn { font-size:9px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--gravel); }
-.dh .dd { font-size:22px; font-weight:700; color:var(--graphite); line-height:1.1; margin-top:1px; }
-.dh.today .dd {
-  background: var(--obsidian); color: var(--white);
-  width:34px; height:34px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  margin: 1px auto 0; font-size:16px;
-}
-.dh.today .dn { color: var(--obsidian); }
+.leg { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--gravel); }
+.ldot { width: 10px; height: 10px; border-radius: 3px; }
+.ldot.avail  { background: var(--avail); border: 1.5px solid var(--border); }
+.ldot.busy   { background: var(--busy-bg); border: 1.5px solid var(--mist); }
+.ldot.booked { background: #4caf50; }
 
-/* Scrollable grid */
-.cal-scroll {
-  flex: 1;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-}
-.cal-scroll::-webkit-scrollbar { width:5px; }
-.cal-scroll::-webkit-scrollbar-track { background:var(--surface); }
-.cal-scroll::-webkit-scrollbar-thumb { background:var(--mist); border-radius:3px; }
+/* ── GRID ── */
+.container { padding: 20px 28px; }
 
-.time-grid {
+.cal-wrap {
+  background: var(--white);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+}
+
+.grid-head {
   display: grid;
   grid-template-columns: 52px repeat(7, 1fr);
-  position: relative;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
-.tc { /* time column */
-  border-right: 1px solid var(--border);
-  position: relative;
+.gh-space {}
+.gh-day {
+  padding: 12px 6px 10px;
+  text-align: center;
+  border-left: 1px solid var(--border);
 }
-.tl { /* time label */
-  position: absolute;
-  right: 7px;
-  font-size:9px;
-  font-weight:500;
-  letter-spacing:.04em;
-  color: var(--gravel);
-  transform: translateY(-50%);
-  white-space: nowrap;
+.gh-day .dn { font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--gravel); }
+.gh-day .dd { font-size: 20px; font-weight: 700; color: var(--graphite); line-height: 1; margin-top: 3px; }
+.gh-day.today .dd {
+  background: var(--obsidian); color: var(--white);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 3px auto 0; font-size: 14px;
 }
-.dc { /* day column */
-  border-right: 1px solid var(--border);
-  position: relative;
-}
-.hl { position:absolute; left:0; right:0; border-top:1px solid var(--border); pointer-events:none; }
-.ml { position:absolute; left:0; right:0; border-top:1px dashed #f0edec; pointer-events:none; }
+.gh-day.today .dn { color: var(--obsidian); }
 
-/* Now line */
-.now-line {
-  position: absolute;
-  left: 0; right: 0;
-  border-top: 2px solid #c0392b;
-  pointer-events: none;
-  z-index: 8;
-}
-.now-line::before {
-  content:'';
-  position:absolute; left:-4px; top:-4px;
-  width:8px; height:8px;
-  border-radius:50%;
-  background:#c0392b;
+.grid-body { display: grid; grid-template-columns: 52px repeat(7, 1fr); }
+
+.tlabel {
+  height: 48px;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 9px;
+  font-size: 10px; font-weight: 600; color: var(--pebble);
+  border-top: 1px solid var(--border);
+  letter-spacing: .03em;
 }
 
-/* Events */
-.ev {
-  position: absolute;
-  left: 2px; right: 2px;
-  border-radius: 3px;
-  padding: 2px 5px;
-  font-size: 10px;
-  font-weight: 500;
+.slot {
+  height: 48px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  position: relative;
+  transition: background .1s;
+}
+
+/* Available */
+.slot.avail { background: var(--avail); cursor: pointer; }
+.slot.avail:hover { background: #f0faf0; }
+.slot.avail:hover::after {
+  content: '+ reservar';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  color: #388e3c; letter-spacing: .05em;
+}
+
+/* Busy */
+.slot.busy {
+  background: var(--busy-bg);
+  cursor: default;
+}
+.slot.busy::after {
+  content: 'ocupado';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600;
+  color: var(--mist); letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+/* Booked */
+.slot.booked {
+  background: var(--booked-bg);
   cursor: pointer;
-  overflow: hidden;
-  z-index: 5;
-  transition: filter .1s, z-index 0s;
-  border-left: 3px solid rgba(0,0,0,0.25);
+  padding: 5px 7px;
 }
-.ev:hover { filter:brightness(.88); z-index:20; }
-.ev .et { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.35; }
-.ev .em { font-size:9px; opacity:.75; font-weight:400; }
+.slot.booked .bname {
+  font-size: 11px; font-weight: 700;
+  color: var(--booked-txt);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.slot.booked .blabel {
+  font-size: 9px; font-weight: 600;
+  color: #66bb6a; letter-spacing: .04em;
+  text-transform: uppercase; margin-top: 1px;
+}
 
-/* Category colours */
-.c-exercise { background:#3a3a38; color:#dcdad9; }
-.c-yoga     { background:#6b7472; color:#f0eeec; }
-.c-work     { background:#1a3d18; color:#b8d9b5; }
-.c-family   { background:#5c4220; color:#f5dcb8; }
-.c-study    { background:#1a3050; color:#b5cde8; }
-.c-mentor   { background:#3d2860; color:#cfc0ec; }
-.c-meeting  { background:#5c1515; color:#f2c0c0; }
-.c-home     { background:#46403e; color:#d9d5d2; }
-.c-default  { background:var(--graphite); color:var(--limestone); }
+/* Off hours / weekend light */
+.slot.off { background: var(--surface); cursor: default; }
 
-/* ── SIDEBAR ── */
-.sidebar {
-  width: 268px;
-  flex-shrink: 0;
-  background: var(--obsidian);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-left: 1px solid #2e2e2c;
-}
-.sb-head {
-  padding: 16px 18px 12px;
-  border-bottom: 1px solid #2e2e2c;
-  flex-shrink: 0;
-}
-.sb-head h2 {
-  font-size:10px; font-weight:700; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--pebble);
-}
-.sb-head p { font-size:11px; color:var(--gravel); margin-top:2px; }
-
-.sb-body {
-  flex:1; overflow-y:auto; padding:8px 0;
-}
-.sb-body::-webkit-scrollbar { width:3px; }
-.sb-body::-webkit-scrollbar-thumb { background:#2e2e2c; border-radius:2px; }
-
-.sg { margin-bottom:2px; }
-.sg-label {
-  padding:8px 18px 4px;
-  font-size:9px; font-weight:700;
-  letter-spacing:.12em; text-transform:uppercase;
-  color:var(--gravel);
-}
-.ti {
-  padding:7px 18px;
-  display:flex; align-items:flex-start; gap:9px;
-  cursor:pointer;
-  transition:background .1s;
-}
-.ti:hover { background:rgba(255,255,255,0.04); }
-.pdot {
-  width:6px; height:6px; border-radius:50%;
-  flex-shrink:0; margin-top:4px;
-}
-.pdot.urgent { background:#c0392b; }
-.pdot.high   { background:#d4812a; }
-.pdot.normal { background:var(--gravel); }
-.pdot.low    { background:#2e2e2c; }
-.tc-wrap { flex:1; min-width:0; }
-.tn { font-size:11px; color:var(--limestone); line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.tm { font-size:9px; color:var(--gravel); margin-top:1px; }
-
-.sb-empty { padding:24px 18px; font-size:11px; color:var(--gravel); line-height:1.6; }
-
-/* ── SETUP OVERLAY ── */
+/* ── MODALS ── */
 .overlay {
-  position:fixed; inset:0;
-  background:rgba(10,10,10,.92);
-  display:flex; align-items:center; justify-content:center;
-  z-index:200;
-  backdrop-filter:blur(3px);
+  position: fixed; inset: 0;
+  background: rgba(10,10,10,.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+  padding: 16px;
 }
-.setup-card {
-  background:var(--white);
-  border-radius:8px;
-  padding:40px 36px;
-  width:460px; max-width:92vw;
-}
-.setup-card h1 {
-  font-size:22px; font-weight:900; letter-spacing:-.02em;
-  color:var(--obsidian); margin-bottom:4px;
-}
-.setup-card > p {
-  font-size:12px; color:var(--gravel); line-height:1.6;
-  margin-bottom:26px;
-}
-.sf { margin-bottom:14px; }
-.sf label {
-  display:block; font-size:10px; font-weight:700;
-  letter-spacing:.1em; text-transform:uppercase;
-  color:var(--graphite); margin-bottom:5px;
-}
-.sf input {
-  width:100%; padding:9px 12px;
-  border:1px solid var(--border);
-  border-radius:4px;
-  font-family:'Plus Jakarta Sans',sans-serif;
-  font-size:12px; color:var(--obsidian);
-  background:var(--surface); outline:none;
-  transition:border-color .15s;
-}
-.sf input:focus { border-color:var(--graphite); }
-.sh { font-size:10px; color:var(--pebble); margin-top:4px; line-height:1.5; }
-.sh a { color:var(--graphite); }
-.sa { display:flex; gap:10px; margin-top:26px; }
-.btn-primary {
-  flex:1; background:var(--obsidian); color:var(--white);
-  border:none; padding:11px;
-  border-radius:4px;
-  font-family:'Plus Jakarta Sans',sans-serif;
-  font-size:12px; font-weight:700; letter-spacing:.06em;
-  cursor:pointer; transition:background .15s;
-}
-.btn-primary:hover { background:var(--graphite); }
-.btn-secondary {
-  background:none; color:var(--gravel);
-  border:1px solid var(--border);
-  padding:11px 18px; border-radius:4px;
-  font-family:'Plus Jakarta Sans',sans-serif;
-  font-size:12px; cursor:pointer;
-  transition:all .15s;
-}
-.btn-secondary:hover { border-color:var(--gravel); color:var(--graphite); }
 
-/* legend */
-.legend {
-  display:flex; flex-wrap:wrap; gap:6px;
-  padding:10px 18px 0;
+/* Booking modal */
+.modal {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 32px 28px;
+  width: 420px; max-width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.2);
 }
-.leg { display:flex; align-items:center; gap:5px; }
-.leg-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
-.leg-txt { font-size:9px; color:var(--gravel); }
+.modal-tag { font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--gravel); margin-bottom: 5px; }
+.modal h2  { font-size: 20px; font-weight: 800; letter-spacing: -.02em; color: var(--obsidian); }
+.modal-sub { font-size: 12px; color: var(--gravel); margin-top: 3px; margin-bottom: 24px; }
+.mf        { margin-bottom: 14px; }
+.mf label  { display: block; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--graphite); margin-bottom: 5px; }
+.mf input, .mf textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit; font-size: 13px; color: var(--obsidian);
+  background: var(--surface); outline: none;
+  transition: border-color .15s;
+}
+.mf input:focus, .mf textarea:focus { border-color: var(--graphite); background: var(--white); }
+.mf textarea { resize: vertical; min-height: 72px; }
+.mactions { display: flex; gap: 10px; margin-top: 22px; }
+
+/* Confirm card */
+.confirm-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 40px 28px;
+  width: 380px; max-width: 100%;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,.2);
+}
+.ci { font-size: 44px; margin-bottom: 12px; }
+.confirm-card h2 { font-size: 20px; font-weight: 800; color: var(--obsidian); margin-bottom: 8px; }
+.confirm-card p  { font-size: 13px; color: var(--gravel); line-height: 1.6; margin-bottom: 22px; }
+
+/* Settings card */
+.settings-card {
+  background: var(--white);
+  border-radius: 12px;
+  padding: 36px 28px;
+  width: 480px; max-width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,.2);
+  max-height: 90vh; overflow-y: auto;
+}
+.settings-card h1 { font-size: 18px; font-weight: 800; color: var(--obsidian); margin-bottom: 5px; }
+.settings-card > p { font-size: 12px; color: var(--gravel); line-height: 1.6; margin-bottom: 22px; }
+.sh { font-size: 10px; color: var(--pebble); margin-top: 4px; line-height: 1.5; }
+.sh a { color: var(--graphite); }
+
+/* Buttons */
+.btn-primary {
+  flex: 1; background: var(--obsidian); color: var(--white);
+  border: none; padding: 11px 18px; border-radius: 7px;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.btn-primary:hover { background: var(--graphite); }
+.btn-secondary {
+  background: none; color: var(--gravel);
+  border: 1.5px solid var(--border);
+  padding: 11px 18px; border-radius: 7px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.btn-secondary:hover { border-color: var(--gravel); color: var(--graphite); }
+.btn-wa {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px; border-radius: 7px;
+  background: #25D366; color: var(--white); border: none;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; margin-bottom: 10px; text-decoration: none;
+  transition: opacity .15s;
+}
+.btn-wa:hover { opacity: .9; }
+.btn-close {
+  width: 100%; padding: 10px; border-radius: 7px;
+  background: none; border: 1.5px solid var(--border);
+  color: var(--gravel); font-family: inherit; font-size: 12px;
+  cursor: pointer; transition: all .15s;
+}
+.btn-close:hover { border-color: var(--gravel); }
+
+/* section divider in settings */
+.sdiv { border-top: 1px solid var(--border); margin: 20px 0 16px; }
+.sdiv-label { font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gravel); margin-bottom: 14px; }
+
+/* Time range row */
+.time-row { display: flex; gap: 12px; }
+.time-row .mf { flex: 1; margin-bottom: 0; }
 </style>
 </head>
 <body>
 
-<!-- ── HEADER ── -->
+<!-- HEADER -->
 <div class="header">
-  <div class="logo">Diva <em>Rebel</em></div>
+  <div class="hinfo">
+    <h1>Horários — Aline</h1>
+    <p>Selecione um horário disponível para reservar</p>
+  </div>
   <div class="spacer"></div>
-  <div class="nav-group">
+  <div class="week-nav">
     <button class="btn-today" onclick="goToday()">Hoje</button>
-    <button class="btn-icon" onclick="prevWeek()">&#8249;</button>
-    <button class="btn-icon" onclick="nextWeek()">&#8250;</button>
+    <button class="nav-btn" onclick="prevWeek()">&#8249;</button>
+    <span class="week-label" id="weekLabel">—</span>
+    <button class="nav-btn" onclick="nextWeek()">&#8250;</button>
   </div>
-  <div class="week-label" id="weekLabel">—</div>
-  <div class="spacer"></div>
-  <span class="sync-badge" id="gcalBadge">● Google</span>
-  <span class="sync-badge" id="cuBadge">● ClickUp</span>
-  <button class="btn-auth" id="authBtn" onclick="handleAuth()" style="display:none">Conectar Google</button>
-  <button class="btn-cfg" onclick="openSetup()" title="Configurar sincronização">⚙</button>
+  <button class="btn-cfg" onclick="openSettings()" title="Configurações">⚙</button>
 </div>
 
-<!-- ── MAIN ── -->
-<div class="main">
-
-  <!-- CALENDAR -->
-  <div class="cal">
-    <div class="day-headers" id="dayHeaders"></div>
-    <div class="cal-scroll" id="calScroll">
-      <div class="time-grid" id="timeGrid"></div>
-    </div>
-  </div>
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sb-head">
-      <h2>ClickUp</h2>
-      <p id="sbSubtitle">Tarefas desta semana</p>
-    </div>
-    <div class="sb-body" id="sbBody">
-      <div class="sb-empty">Carregando…</div>
-    </div>
-  </div>
-
+<!-- SYNC STATUS -->
+<div class="sync-bar">
+  <div class="sdot" id="sdot"></div>
+  <span id="syncMsg">Verificando sincronização com Google Agenda...</span>
 </div>
 
-<!-- ── SETUP MODAL ── -->
-<div class="overlay" id="setupOverlay" style="display:none">
-  <div class="setup-card">
-    <h1>Configurar Agenda</h1>
-    <p>Conecte seu Google Agenda e ClickUp para sincronização em tempo real. Suas credenciais ficam salvas apenas neste navegador.</p>
+<!-- LEGEND -->
+<div class="legend">
+  <div class="leg"><div class="ldot avail"></div>Disponível — clique para reservar</div>
+  <div class="leg"><div class="ldot busy"></div>Ocupado</div>
+  <div class="leg"><div class="ldot booked"></div>Reservado</div>
+</div>
 
-    <div class="sf">
-      <label>Google OAuth Client ID</label>
-      <input type="text" id="inp-gcid" placeholder="000000000000-xxxx.apps.googleusercontent.com">
-      <div class="sh">Crie em <a href="https://console.cloud.google.com/apis/credentials" target="_blank">console.cloud.google.com</a> → Credenciais → OAuth 2.0 para aplicativo da Web. Adicione <code>file://</code> como origem autorizada.</div>
+<!-- CALENDAR -->
+<div class="container">
+  <div class="cal-wrap">
+    <div class="grid-head" id="gridHead"></div>
+    <div class="grid-body" id="gridBody"></div>
+  </div>
+</div>
+
+<!-- BOOKING MODAL -->
+<div class="overlay" id="bookOverlay" style="display:none">
+  <div class="modal">
+    <div class="modal-tag">Novo agendamento</div>
+    <h2 id="mTitle">—</h2>
+    <div class="modal-sub" id="mSub">—</div>
+    <div class="mf">
+      <label>Nome do cliente ou pessoa *</label>
+      <input type="text" id="bName" placeholder="Ex: Dra. Maria, João Silva, Reunião Oficina…" autocomplete="off">
+    </div>
+    <div class="mf">
+      <label>Observação (opcional)</label>
+      <textarea id="bNote" placeholder="Assunto, tipo de atendimento, link de reunião…"></textarea>
+    </div>
+    <div class="mactions">
+      <button class="btn-secondary" onclick="closeBook()">Cancelar</button>
+      <button class="btn-primary" onclick="confirmBook()">✓ Confirmar reserva</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMATION -->
+<div class="overlay" id="doneOverlay" style="display:none">
+  <div class="confirm-card">
+    <div class="ci">✅</div>
+    <h2>Reserva feita!</h2>
+    <p id="doneText">—</p>
+    <a class="btn-wa" id="waBtn" href="#" target="_blank">
+      📲 &nbsp;Enviar confirmação pelo WhatsApp
+    </a>
+    <button class="btn-close" onclick="closeDone()">Fechar</button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="settingsOverlay" style="display:none">
+  <div class="settings-card">
+    <h1>⚙ Configurações</h1>
+    <p>Configure a sincronização com o Google Agenda para que os horários ocupados apareçam automaticamente.</p>
+
+    <div class="sdiv-label">Sincronização com Google Agenda</div>
+    <div class="mf">
+      <label>Endereço Secreto iCal do Google Agenda</label>
+      <input type="url" id="inp-ical" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+      <div class="sh">
+        Google Agenda → ⚙ Configurações → clique no nome da agenda → role até <strong>"Endereço secreto no formato iCal"</strong> → copie o link
+      </div>
     </div>
 
-    <div class="sf">
-      <label>ClickUp Personal API Token</label>
-      <input type="text" id="inp-ctoken" placeholder="pk_xxxxxxxxxxxxxxxxxx">
-      <div class="sh">ClickUp → seu avatar → Configurações → Apps → Gerar Token Pessoal</div>
+    <div class="sdiv"></div>
+    <div class="sdiv-label">Contato para notificações</div>
+    <div class="mf">
+      <label>Número WhatsApp (DDI + DDD + número)</label>
+      <input type="tel" id="inp-wa" placeholder="5511999999999">
+      <div class="sh">Ex: 5511912345678 &nbsp;(Brasil +55 + DDD + 9 dígitos)</div>
     </div>
 
-    <div class="sa">
-      <button class="btn-secondary" onclick="useDemo()">Usar dados demo</button>
-      <button class="btn-primary" onclick="saveAndConnect()">Salvar e conectar</button>
+    <div class="sdiv"></div>
+    <div class="sdiv-label">Janela de horários visíveis</div>
+    <div class="time-row">
+      <div class="mf">
+        <label>Início</label>
+        <input type="time" id="inp-start" value="08:00">
+      </div>
+      <div class="mf">
+        <label>Fim</label>
+        <input type="time" id="inp-end" value="19:00">
+      </div>
+    </div>
+
+    <div class="sdiv"></div>
+    <div class="mactions">
+      <button class="btn-secondary" onclick="closeSettings()">Cancelar</button>
+      <button class="btn-primary" onclick="saveSettings()">Salvar e sincronizar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 // CONFIG
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 const CFG = {
-  get gcid()    { return localStorage.getItem('ag_gcid')    || ''; },
-  get ctoken()  { return localStorage.getItem('ag_ctoken')  || ''; },
-  set gcid(v)   { localStorage.setItem('ag_gcid', v);    },
-  set ctoken(v) { localStorage.setItem('ag_ctoken', v);  },
+  get ical()  { return localStorage.getItem('ag2_ical')  || ''; },
+  get wa()    { return localStorage.getItem('ag2_wa')    || ''; },
+  get start() { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
+  get end()   { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
+  set ical(v) { localStorage.setItem('ag2_ical',  v); },
+  set wa(v)   { localStorage.setItem('ag2_wa',    v); },
+  set start(v){ localStorage.setItem('ag2_sh', v); },
+  set end(v)  { localStorage.setItem('ag2_eh', v); },
 };
 
-// ════════════════════════════════════════════
+// Bookings stored in localStorage { "2026-06-10T09:00": {name, note} }
+const getBookings = () => JSON.parse(localStorage.getItem('ag2_bk') || '{}');
+const setBookings = b => localStorage.setItem('ag2_bk', JSON.stringify(b));
+
+// ═══════════════════════════════════════════
 // CONSTANTS
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 const DAYS   = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const S_HOUR = 5;    // grid start 5am
-const E_HOUR = 23;   // grid end 11pm
-const HP     = 60;   // pixels per hour
+const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
-// ════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════
-let monday    = getMonday(new Date());
-let gapiReady = false;
-let gisReady  = false;
-let tokenCli;
-let signed    = false;
-let gcEvents  = [];
-let cuTasks   = [];
+let monday   = getMonday(new Date());
+let busy     = []; // [{start:Date, end:Date}]
+let pending  = null;
 
-// ════════════════════════════════════════════
-// SETUP FLOW
-// ════════════════════════════════════════════
-function checkSetup() {
-  document.getElementById('inp-gcid').value   = CFG.gcid;
-  document.getElementById('inp-ctoken').value = CFG.ctoken;
-  if (CFG.gcid && CFG.ctoken) {
-    // Credentials already saved — connect for real
-    closeSetup();
-    bootApis();
-  } else {
-    // No credentials — load demo automatically, no blocking modal
-    closeSetup();
-    useDemo();
-  }
-}
-
-function openSetup() {
-  document.getElementById('inp-gcid').value   = CFG.gcid;
-  document.getElementById('inp-ctoken').value = CFG.ctoken;
-  document.getElementById('setupOverlay').style.display = 'flex';
-}
-
-function saveAndConnect() {
-  const g = document.getElementById('inp-gcid').value.trim();
-  const c = document.getElementById('inp-ctoken').value.trim();
-  if (!g || !c) { alert('Preencha os dois campos.'); return; }
-  CFG.gcid   = g;
-  CFG.ctoken = c;
-  closeSetup();
-  document.getElementById('authBtn').style.display = '';
-  bootApis();
-}
-
-function useDemo() {
-  closeSetup();
-  gcEvents = DEMO_EVENTS;
-  cuTasks  = DEMO_TASKS;
-  renderCal();
-  renderSidebar();
-  setBadge('gcalBadge','Demo','');
-  setBadge('cuBadge','Demo','');
-  document.getElementById('authBtn').style.display = 'none';
-}
-
-function closeSetup() { document.getElementById('setupOverlay').style.display = 'none'; }
-
-// ════════════════════════════════════════════
-// GOOGLE CALENDAR
-// ════════════════════════════════════════════
-function bootApis() {
-  loadGapi();
-  loadGis();
-  loadClickup();
-}
-
-function loadGapi() {
-  const s = document.createElement('script');
-  s.src = 'https://apis.google.com/js/api.js';
-  s.onload = () => {
-    gapi.load('client', async () => {
-      await gapi.client.init({
-        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-      });
-      gapiReady = true;
-      tryInitToken();
-    });
-  };
-  document.head.appendChild(s);
-}
-
-function loadGis() {
-  const s = document.createElement('script');
-  s.src = 'https://accounts.google.com/gsi/client';
-  s.onload = () => { gisReady = true; tryInitToken(); };
-  document.head.appendChild(s);
-}
-
-function tryInitToken() {
-  if (!gapiReady || !gisReady) return;
-  tokenCli = google.accounts.oauth2.initTokenClient({
-    client_id: CFG.gcid,
-    scope: 'https://www.googleapis.com/auth/calendar.readonly',
-    callback: async resp => {
-      if (resp.error) { setBadge('gcalBadge','Erro','err'); return; }
-      signed = true;
-      document.getElementById('authBtn').classList.add('connected');
-      document.getElementById('authBtn').textContent = 'Google ✓';
-      setBadge('gcalBadge','Sincronizado','ok');
-      await fetchGcal();
-    },
-  });
-}
-
-function handleAuth() {
-  if (!tokenCli) { alert('Aguarde a inicialização ou verifique o Client ID.'); return; }
-  tokenCli.requestAccessToken(gapi.client.getToken() ? {} : { prompt:'consent' });
-}
-
-async function fetchGcal() {
-  const start = new Date(monday); start.setHours(0,0,0,0);
-  const end   = new Date(start);  end.setDate(end.getDate()+7);
-  try {
-    const r = await gapi.client.calendar.events.list({
-      calendarId:'primary',
-      timeMin: start.toISOString(),
-      timeMax: end.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 150,
-    });
-    gcEvents = r.result.items || [];
-    setBadge('gcalBadge','Sincronizado','ok');
-    renderCal();
-  } catch(e) {
-    console.error(e);
-    setBadge('gcalBadge','Erro','err');
-  }
-}
-
-// ════════════════════════════════════════════
-// CLICKUP
-// ════════════════════════════════════════════
-async function loadClickup() {
-  if (!CFG.ctoken) { setBadge('cuBadge','Sem token','err'); return; }
-  const start = new Date(monday); start.setHours(0,0,0,0);
-  const end   = new Date(start);  end.setDate(end.getDate()+7);
-  try {
-    const r = await fetch(
-      `https://api.clickup.com/api/v2/team/90131929380/task?due_date_gt=${start.getTime()}&due_date_lt=${end.getTime()}&include_closed=false&order_by=due_date`,
-      { headers: { Authorization: CFG.ctoken } }
-    );
-    const data = await r.json();
-    cuTasks = data.tasks || [];
-    setBadge('cuBadge','Sincronizado','ok');
-    renderSidebar();
-  } catch(e) {
-    console.error(e);
-    setBadge('cuBadge','Erro','err');
-  }
-}
-
-// ════════════════════════════════════════════
-// NAVIGATION
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
 function getMonday(d) {
-  const day = new Date(d); day.setHours(0,0,0,0);
-  const diff = day.getDay()===0 ? -6 : 1-day.getDay();
-  day.setDate(day.getDate()+diff);
-  return day;
+  const r = new Date(d); r.setHours(0,0,0,0);
+  r.setDate(r.getDate() + (r.getDay()===0 ? -6 : 1-r.getDay()));
+  return r;
 }
-function prevWeek() { monday = new Date(monday); monday.setDate(monday.getDate()-7); refresh(); }
-function nextWeek() { monday = new Date(monday); monday.setDate(monday.getDate()+7); refresh(); }
-function goToday()  { monday = getMonday(new Date()); refresh(); }
-
-async function refresh() {
-  renderDayHeaders();
-  renderTimeGrid();
-  if (signed) await fetchGcal();
-  await loadClickup();
-}
-
-// ════════════════════════════════════════════
-// RENDER — CALENDAR
-// ════════════════════════════════════════════
-function renderCal() { renderDayHeaders(); renderTimeGrid(); }
-
-function renderDayHeaders() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const hdr   = document.getElementById('dayHeaders');
-  hdr.innerHTML = '<div class="dh-spacer"></div>';
-  for (let i=0;i<7;i++) {
-    const d = new Date(monday); d.setDate(d.getDate()+i);
-    const isToday = d.getTime()===today.getTime();
-    const el = document.createElement('div');
-    el.className = 'dh'+(isToday?' today':'');
-    el.innerHTML = `<div class="dn">${DAYS[d.getDay()]}</div><div class="dd">${d.getDate()}</div>`;
-    hdr.appendChild(el);
-  }
-  // week label
-  const end = new Date(monday); end.setDate(end.getDate()+6);
-  const sm = MONTHS[monday.getMonth()].slice(0,3);
-  const em = MONTHS[end.getMonth()].slice(0,3);
-  document.getElementById('weekLabel').textContent =
-    monday.getMonth()===end.getMonth()
-      ? `${monday.getDate()} — ${end.getDate()} de ${sm} ${end.getFullYear()}`
-      : `${monday.getDate()} ${sm} — ${end.getDate()} ${em} ${end.getFullYear()}`;
-}
-
-function renderTimeGrid() {
-  const grid = document.getElementById('timeGrid');
-  grid.innerHTML = '';
-  const totalH = E_HOUR - S_HOUR;
-  grid.style.minHeight = (totalH * HP)+'px';
-
-  // Time column
-  const tc = document.createElement('div');
-  tc.className = 'tc';
-  for (let h=S_HOUR; h<=E_HOUR; h++) {
-    const lbl = document.createElement('div');
-    lbl.className = 'tl';
-    lbl.style.top = ((h-S_HOUR)*HP)+'px';
-    lbl.textContent = h===0?'':(h<12?`${h}am`:h===12?'12pm':`${h-12}pm`);
-    tc.appendChild(lbl);
-  }
-  grid.appendChild(tc);
-
-  // Day columns
-  const today = new Date(); today.setHours(0,0,0,0);
-  for (let i=0;i<7;i++) {
-    const d = new Date(monday); d.setDate(d.getDate()+i);
-    const dc = document.createElement('div');
-    dc.className = 'dc';
-    dc.id = `dc${i}`;
-
-    // Hour/half lines
-    for (let h=S_HOUR; h<=E_HOUR; h++) {
-      const hl = document.createElement('div');
-      hl.className = 'hl';
-      hl.style.top = ((h-S_HOUR)*HP)+'px';
-      dc.appendChild(hl);
-      if (h<E_HOUR) {
-        const ml = document.createElement('div');
-        ml.className = 'ml';
-        ml.style.top = ((h-S_HOUR+.5)*HP)+'px';
-        dc.appendChild(ml);
-      }
-    }
-
-    // Now line
-    if (d.getTime()===today.getTime()) {
-      const now = new Date();
-      const min = (now.getHours()-S_HOUR)*60+now.getMinutes();
-      if (min>=0) {
-        const nl = document.createElement('div');
-        nl.className = 'now-line';
-        nl.style.top = (min/60*HP)+'px';
-        dc.appendChild(nl);
-      }
-    }
-
-    grid.appendChild(dc);
-  }
-
-  placeEvents();
-}
-
-function categorize(t='') {
-  const s = t.toLowerCase();
-  if (/luta|muscula/.test(s))              return 'c-exercise';
-  if (/yoga/.test(s))                      return 'c-yoga';
-  if (/bloco ouro|trabalho/.test(s))       return 'c-work';
-  if (/café|almoço|crianças|cozinhão|roupa/.test(s)) return 'c-family';
-  if (/inglês|leitura/.test(s))            return 'c-study';
-  if (/mentor|aula/.test(s))               return 'c-mentor';
-  if (/reunião|venda|treinamento/.test(s)) return 'c-meeting';
-  if (/limpeza|casa/.test(s))              return 'c-home';
-  return 'c-default';
-}
-
-function placeEvents() {
-  gcEvents.forEach(ev => {
-    if (!ev.start?.dateTime) return;
-    const s = new Date(ev.start.dateTime);
-    const e = new Date(ev.end.dateTime);
-    const sd = new Date(s); sd.setHours(0,0,0,0);
-    const ci = Math.round((sd-monday)/86400000);
-    if (ci<0||ci>6) return;
-    const col = document.getElementById(`dc${ci}`);
-    if (!col) return;
-
-    const topMin = (s.getHours()-S_HOUR)*60+s.getMinutes();
-    const durMin = (e-s)/60000;
-    const top    = topMin/60*HP;
-    const height = Math.max(durMin/60*HP, 18);
-
-    const div = document.createElement('div');
-    div.className = `ev ${categorize(ev.summary||'')}`;
-    div.style.top    = top+'px';
-    div.style.height = height+'px';
-    div.title = `${ev.summary}\n${fmt(s)}–${fmt(e)}`;
-    div.innerHTML = `<div class="et">${ev.summary||''}</div>`+
-      (height>28?`<div class="em">${fmt(s)}–${fmt(e)}</div>`:'');
-    div.onclick = () => ev.htmlLink && window.open(ev.htmlLink,'_blank');
-    col.appendChild(div);
-  });
-}
-
 function fmt(d) {
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
 }
+function fmtH(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function key(d) { return d.toISOString().slice(0,16); }
 
-// ════════════════════════════════════════════
-// RENDER — SIDEBAR
-// ════════════════════════════════════════════
-const DAY_ORDER = ['segunda','terça','quarta','quinta','sexta','sábado','domingo'];
-const DAY_LABEL = { segunda:'Seg',terça:'Ter',quarta:'Qua',quinta:'Qui',sexta:'Sex',sábado:'Sáb',domingo:'Dom' };
+function isBusy(s, e) { return busy.some(b => b.start < e && b.end > s); }
 
-function renderSidebar() {
-  const body = document.getElementById('sbBody');
-  if (!cuTasks.length) {
-    body.innerHTML = '<div class="sb-empty">Nenhuma tarefa esta semana.</div>';
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function prevWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()-7); renderCal(); }
+function nextWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()+7); renderCal(); }
+function goToday() { monday=getMonday(new Date()); renderCal(); }
+
+// ═══════════════════════════════════════════
+// ICAL FETCH + PARSE
+// ═══════════════════════════════════════════
+async function syncGcal() {
+  if (!CFG.ical) {
+    setSyncStatus('Configure o link do Google Agenda no ⚙ para sincronizar automaticamente', null);
     return;
   }
-  const groups = {};
-  cuTasks.forEach(t => {
-    const k = (t.status||'outros').toLowerCase();
-    if (!groups[k]) groups[k]=[];
-    groups[k].push(t);
-  });
+  setSyncStatus('Sincronizando com Google Agenda…', null);
+  try {
+    const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(CFG.ical);
+    const r   = await fetch(url, { cache: 'no-cache' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text();
+    busy = parseIcal(txt);
+    setSyncStatus(`Sincronizado — ${busy.length} evento(s) carregado(s)`, true);
+  } catch(e) {
+    setSyncStatus('Erro ao sincronizar. Verifique o link iCal nas configurações.', false);
+    console.error(e);
+  }
+  renderCal();
+}
 
-  const keys = [...DAY_ORDER.filter(d=>groups[d]), ...Object.keys(groups).filter(k=>!DAY_ORDER.includes(k))];
+function parseIcal(txt) {
+  const evts = [];
+  for (const blk of txt.split('BEGIN:VEVENT').slice(1)) {
+    const get = k => { const m = blk.match(new RegExp(k+'(?:;[^:]*)?:([^\r\n]+)')); return m?m[1].trim():null; };
+    const s = get('DTSTART'), e = get('DTEND');
+    if (!s||!e) continue;
+    const pd = v => {
+      const c = v.replace(/Z$/,'');
+      return c.length===8
+        ? new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}`)
+        : new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}T${c.slice(9,11)}:${c.slice(11,13)}:${c.slice(13,15)}`);
+    };
+    try { evts.push({ start:pd(s), end:pd(e) }); } catch(_) {}
+  }
+  return evts;
+}
+
+function setSyncStatus(msg, ok) {
+  document.getElementById('syncMsg').textContent = msg;
+  const d = document.getElementById('sdot');
+  d.className = 'sdot' + (ok===true?' ok':ok===false?' err':'');
+}
+
+// ═══════════════════════════════════════════
+// RENDER CALENDAR
+// ═══════════════════════════════════════════
+function renderCal() {
+  // Week label
+  const end = new Date(monday); end.setDate(end.getDate()+6);
+  const sm = MONTHS[monday.getMonth()], em = MONTHS[end.getMonth()];
+  document.getElementById('weekLabel').textContent =
+    monday.getMonth()===end.getMonth()
+      ? `${monday.getDate()} — ${end.getDate()} ${sm} ${end.getFullYear()}`
+      : `${monday.getDate()} ${sm} — ${end.getDate()} ${em} ${end.getFullYear()}`;
+
+  // Day headers
+  const today = new Date(); today.setHours(0,0,0,0);
+  const hd = document.getElementById('gridHead');
+  hd.innerHTML = '<div class="gh-space"></div>';
+  for (let i=0;i<7;i++) {
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    const isT = d.getTime()===today.getTime();
+    const el = document.createElement('div');
+    el.className = 'gh-day'+(isT?' today':'');
+    el.innerHTML = `<div class="dn">${DAYS[d.getDay()]}</div><div class="dd">${d.getDate()}</div>`;
+    hd.appendChild(el);
+  }
+
+  // Body
+  const body = document.getElementById('gridBody');
   body.innerHTML = '';
+  const bks = getBookings();
 
-  keys.forEach(key => {
-    const wrap = document.createElement('div');
-    wrap.className = 'sg';
-    wrap.innerHTML = `<div class="sg-label">${DAY_LABEL[key]||key}</div>`;
+  for (let h=CFG.start; h<CFG.end; h++) {
+    // Hour label
+    const lbl = document.createElement('div');
+    lbl.className = 'tlabel';
+    lbl.textContent = `${String(h).padStart(2,'0')}h`;
+    body.appendChild(lbl);
 
-    groups[key].forEach(t => {
-      const item = document.createElement('div');
-      item.className = 'ti';
-      item.innerHTML =
-        `<div class="pdot ${t.priority||'normal'}"></div>`+
-        `<div class="tc-wrap">`+
-          `<div class="tn">${t.name}</div>`+
-          `<div class="tm">${t.list?.name||''}</div>`+
-        `</div>`;
-      item.onclick = () => t.url && window.open(t.url,'_blank');
-      wrap.appendChild(item);
-    });
-    body.appendChild(wrap);
-  });
+    for (let i=0;i<7;i++) {
+      const d = new Date(monday); d.setDate(d.getDate()+i); d.setHours(h,0,0,0);
+      const de = new Date(d); de.setHours(h+1);
+      const k  = key(d);
+      const bk = bks[k];
+      const oc = isBusy(d, de);
+
+      const sl = document.createElement('div');
+
+      if (bk) {
+        sl.className = 'slot booked';
+        sl.innerHTML = `<div class="bname">${bk.name}</div><div class="blabel">Reservado</div>`;
+        sl.title = `${bk.name}${bk.note?' — '+bk.note:''}`;
+        sl.onclick = () => askCancel(k, bk, d);
+      } else if (oc) {
+        sl.className = 'slot busy';
+      } else {
+        sl.className = 'slot avail';
+        sl.onclick = () => openBook(d);
+      }
+      body.appendChild(sl);
+    }
+  }
 }
 
-// ════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════
-function setBadge(id, text, cls) {
-  const el = document.getElementById(id);
-  el.textContent = '● '+text;
-  el.className = 'sync-badge'+(cls?' '+cls:'');
+// ═══════════════════════════════════════════
+// BOOKING FLOW
+// ═══════════════════════════════════════════
+function openBook(date) {
+  pending = date;
+  document.getElementById('mTitle').textContent = `${DAYS[date.getDay()]}, ${fmt(date)}`;
+  document.getElementById('mSub').textContent   = `${fmtH(date)} — ${String(date.getHours()+1).padStart(2,'0')}:00`;
+  document.getElementById('bName').value = '';
+  document.getElementById('bNote').value = '';
+  document.getElementById('bookOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('bName').focus(), 100);
+}
+function closeBook() {
+  document.getElementById('bookOverlay').style.display = 'none';
+  pending = null;
 }
 
-// ════════════════════════════════════════════
-// DEMO DATA — semana de 09/06/2026
-// ════════════════════════════════════════════
-const DEMO_EVENTS = [
-  // SEG 09
-  {summary:'💪 Musculação (flex)',       start:{dateTime:'2026-06-09T07:30:00-03:00'},end:{dateTime:'2026-06-09T08:30:00-03:00'},htmlLink:''},
-  {summary:'🧘 Yoga',                    start:{dateTime:'2026-06-09T08:30:00-03:00'},end:{dateTime:'2026-06-09T09:15:00-03:00'},htmlLink:''},
-  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-09T09:30:00-03:00'},end:{dateTime:'2026-06-09T10:30:00-03:00'},htmlLink:''},
-  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-09T10:30:00-03:00'},end:{dateTime:'2026-06-09T11:30:00-03:00'},htmlLink:''},
-  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-09T11:30:00-03:00'},end:{dateTime:'2026-06-09T13:30:00-03:00'},htmlLink:''},
-  {summary:'👥 Treinamento com Alunas',  start:{dateTime:'2026-06-09T15:30:00-03:00'},end:{dateTime:'2026-06-09T16:30:00-03:00'},htmlLink:''},
-  // TER 10
-  {summary:'💪 Musculação',              start:{dateTime:'2026-06-10T06:00:00-03:00'},end:{dateTime:'2026-06-10T07:00:00-03:00'},htmlLink:''},
-  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-10T07:00:00-03:00'},end:{dateTime:'2026-06-10T08:00:00-03:00'},htmlLink:''},
-  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-10T08:00:00-03:00'},end:{dateTime:'2026-06-10T09:30:00-03:00'},htmlLink:''},
-  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-10T09:30:00-03:00'},end:{dateTime:'2026-06-10T10:30:00-03:00'},htmlLink:''},
-  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-10T10:30:00-03:00'},end:{dateTime:'2026-06-10T11:30:00-03:00'},htmlLink:''},
-  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-10T11:30:00-03:00'},end:{dateTime:'2026-06-10T13:30:00-03:00'},htmlLink:''},
-  {summary:'🎯 Reunião — Dra. Camila Dantas',start:{dateTime:'2026-06-10T14:00:00-03:00'},end:{dateTime:'2026-06-10T15:00:00-03:00'},htmlLink:''},
-  // QUA 11
-  {summary:'💪 Musculação',              start:{dateTime:'2026-06-11T06:00:00-03:00'},end:{dateTime:'2026-06-11T07:00:00-03:00'},htmlLink:''},
-  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-11T07:00:00-03:00'},end:{dateTime:'2026-06-11T08:00:00-03:00'},htmlLink:''},
-  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-11T08:00:00-03:00'},end:{dateTime:'2026-06-11T09:30:00-03:00'},htmlLink:''},
-  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-11T09:30:00-03:00'},end:{dateTime:'2026-06-11T10:00:00-03:00'},htmlLink:''},
-  {summary:'🎯 Reunião — Dra. Bia Bento',start:{dateTime:'2026-06-11T10:00:00-03:00'},end:{dateTime:'2026-06-11T11:00:00-03:00'},htmlLink:''},
-  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-11T10:30:00-03:00'},end:{dateTime:'2026-06-11T11:30:00-03:00'},htmlLink:''},
-  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-11T11:30:00-03:00'},end:{dateTime:'2026-06-11T13:30:00-03:00'},htmlLink:''},
-  {summary:'🧹 Limpeza da Casa',         start:{dateTime:'2026-06-11T13:30:00-03:00'},end:{dateTime:'2026-06-11T16:00:00-03:00'},htmlLink:''},
-  {summary:'🧘 Yoga (noite)',            start:{dateTime:'2026-06-11T19:00:00-03:00'},end:{dateTime:'2026-06-11T19:45:00-03:00'},htmlLink:''},
-  // QUI 12
-  {summary:'💪 Musculação (flex)',       start:{dateTime:'2026-06-12T07:30:00-03:00'},end:{dateTime:'2026-06-12T08:30:00-03:00'},htmlLink:''},
-  {summary:'🧘 Yoga',                    start:{dateTime:'2026-06-12T08:30:00-03:00'},end:{dateTime:'2026-06-12T09:15:00-03:00'},htmlLink:''},
-  {summary:'🎓 Aula Mentor',             start:{dateTime:'2026-06-12T09:00:00-03:00'},end:{dateTime:'2026-06-12T11:00:00-03:00'},htmlLink:''},
-  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-12T09:30:00-03:00'},end:{dateTime:'2026-06-12T10:30:00-03:00'},htmlLink:''},
-  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-12T10:30:00-03:00'},end:{dateTime:'2026-06-12T11:30:00-03:00'},htmlLink:''},
-  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-12T11:30:00-03:00'},end:{dateTime:'2026-06-12T13:30:00-03:00'},htmlLink:''},
-  // SEX 13
-  {summary:'💪 Musculação',              start:{dateTime:'2026-06-13T06:00:00-03:00'},end:{dateTime:'2026-06-13T07:00:00-03:00'},htmlLink:''},
-  {summary:'🥊 Luta',                    start:{dateTime:'2026-06-13T07:00:00-03:00'},end:{dateTime:'2026-06-13T08:00:00-03:00'},htmlLink:''},
-  {summary:'🟢 Bloco Ouro — Trabalho',   start:{dateTime:'2026-06-13T08:00:00-03:00'},end:{dateTime:'2026-06-13T09:30:00-03:00'},htmlLink:''},
-  {summary:'☕ Café + Crianças',         start:{dateTime:'2026-06-13T09:30:00-03:00'},end:{dateTime:'2026-06-13T10:30:00-03:00'},htmlLink:''},
-  {summary:'📚 Inglês + Leitura',        start:{dateTime:'2026-06-13T10:30:00-03:00'},end:{dateTime:'2026-06-13T11:30:00-03:00'},htmlLink:''},
-  {summary:'🍽️ Almoço + Crianças',      start:{dateTime:'2026-06-13T11:30:00-03:00'},end:{dateTime:'2026-06-13T13:30:00-03:00'},htmlLink:''},
-  // SÁB 14
-  {summary:'🎓 Aula Mentor (fim de semana)',start:{dateTime:'2026-06-14T09:00:00-03:00'},end:{dateTime:'2026-06-14T11:00:00-03:00'},htmlLink:''},
-  // DOM 15
-  {summary:'🍳 Cozinhão + Roupa da Semana',start:{dateTime:'2026-06-15T09:00:00-03:00'},end:{dateTime:'2026-06-15T13:00:00-03:00'},htmlLink:''},
-];
+function confirmBook() {
+  const name = document.getElementById('bName').value.trim();
+  if (!name) { document.getElementById('bName').focus(); document.getElementById('bName').style.borderColor='#e53935'; return; }
+  document.getElementById('bName').style.borderColor='';
+  const note = document.getElementById('bNote').value.trim();
+  const k    = key(pending);
 
-const DEMO_TASKS = [
-  {name:'👥 Treinamento com Alunas ⚡',       status:'segunda', priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahwmekv'},
-  {name:'🎯 Reunião — Dra. Camila Dantas ⚡', status:'terça',   priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxca0c'},
-  {name:'🟢 BLOCO OURO — Serviço Clientes',   status:'terça',   priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyngu'},
-  {name:'🎯 Reunião — Dra. Bia Bento ⚡',     status:'quarta',  priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxdu1z'},
-  {name:'🟢 BLOCO OURO — Serviço Clientes',   status:'quarta',  priority:'urgent', list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyp03'},
-  {name:'🟤 BLOCO BRONZE — Vendas',            status:'quarta',  priority:'high',   list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxypb6'},
-  {name:'💛 Tarde Livre — Marido Folga',       status:'quinta',  priority:'low',    list:{name:'MAPA ROTINA ALINE'}, url:''},
-  {name:'🟤 BLOCO BRONZE — Vendas',            status:'sexta',   priority:'high',   list:{name:'MAPA ROTINA ALINE'}, url:'https://app.clickup.com/t/86ahxyq5v'},
-  {name:'🍳 Cozinhão + Roupa da Semana',       status:'domingo', priority:'high',   list:{name:'Sprint da Semana'},  url:'https://app.clickup.com/t/86ahxyq83'},
-];
+  const bks = getBookings();
+  bks[k] = { name, note };
+  setBookings(bks);
 
-// ════════════════════════════════════════════
+  // WhatsApp link
+  const d   = pending;
+  const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} às ${fmtH(d)}\n👤 ${name}${note?'\n📝 '+note:''}`;
+  const wa  = CFG.wa;
+  document.getElementById('doneText').textContent = `${name} · ${fmt(d)} às ${fmtH(d)}`;
+  const waBtn = document.getElementById('waBtn');
+  if (wa) { waBtn.href = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`; waBtn.style.display='flex'; }
+  else    { waBtn.style.display='none'; }
+
+  closeBook();
+  document.getElementById('doneOverlay').style.display = 'flex';
+  renderCal();
+}
+
+function closeDone() { document.getElementById('doneOverlay').style.display = 'none'; }
+
+function askCancel(k, bk, date) {
+  if (confirm(`Cancelar a reserva de "${bk.name}" em ${fmt(date)} às ${fmtH(date)}?`)) {
+    const bks = getBookings(); delete bks[k]; setBookings(bks); renderCal();
+  }
+}
+
+// ═══════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════
+function openSettings() {
+  document.getElementById('inp-ical').value  = CFG.ical;
+  document.getElementById('inp-wa').value    = CFG.wa;
+  document.getElementById('inp-start').value = String(CFG.start).padStart(2,'0')+':00';
+  document.getElementById('inp-end').value   = String(CFG.end).padStart(2,'0')+':00';
+  document.getElementById('settingsOverlay').style.display = 'flex';
+}
+function closeSettings() { document.getElementById('settingsOverlay').style.display = 'none'; }
+function saveSettings() {
+  CFG.ical  = document.getElementById('inp-ical').value.trim();
+  CFG.wa    = document.getElementById('inp-wa').value.trim();
+  CFG.start = parseInt(document.getElementById('inp-start').value)||8;
+  CFG.end   = parseInt(document.getElementById('inp-end').value)||19;
+  closeSettings();
+  syncGcal();
+}
+
+// ═══════════════════════════════════════════
 // INIT
-// ════════════════════════════════════════════
+// ═══════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   renderCal();
-  checkSetup();
-
-  // Refresh now-line every minute
-  setInterval(() => { renderCal(); }, 60000);
-
-  // Scroll to 6am
-  setTimeout(() => {
-    const s = document.getElementById('calScroll');
-    if (s) s.scrollTop = (6-S_HOUR)*HP - 10;
-  }, 80);
+  syncGcal();
+  setInterval(syncGcal, 30*60*1000); // resync every 30 min
 });
 </script>
 </body>
