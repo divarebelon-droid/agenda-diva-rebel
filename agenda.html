@@ -458,7 +458,11 @@ function fmt(d) {
 function fmtH(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function key(d) { return d.toISOString().slice(0,16); }
 
-function isBusy(s, e) { return busy.some(b => b.start < e && b.end > s); }
+// Buffer de 1h após cada evento — próximo slot só a partir de 1h depois que o evento termina
+const BUFFER_MS = 60 * 60 * 1000;
+function isBusy(s, e) {
+  return busy.some(b => b.start < e && (b.end.getTime() + BUFFER_MS) > s.getTime());
+}
 
 // ═══════════════════════════════════════════
 // NAVIGATION
@@ -482,7 +486,7 @@ async function syncGcal() {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const txt = await r.text();
     busy = parseIcal(txt);
-    setSyncStatus(`Sincronizado — ${busy.length} evento(s) carregado(s)`, true);
+    setSyncStatus(`Sincronizado — ${busy.length} compromisso(s) bloqueado(s) + 1h de respiro`, true);
   } catch(e) {
     setSyncStatus('Erro ao sincronizar. Verifique o link iCal nas configurações.', false);
     console.error(e);
@@ -490,26 +494,130 @@ async function syncGcal() {
   renderCal();
 }
 
-function parseIcal(txt) {
-  const evts = [];
-  for (const blk of txt.split('BEGIN:VEVENT').slice(1)) {
-    const get = k => { const m = blk.match(new RegExp(k+'(?:;[^:]*)?:([^\r\n]+)')); return m?m[1].trim():null; };
-    const s = get('DTSTART'), e = get('DTEND');
-    if (!s||!e) continue;
-    // Fix de timezone: se termina em Z é UTC — manter Z para JS converter corretamente.
-    // Se tem TZID (sem Z) tratar como horário local.
-    const pd = v => {
-      const isUTC = v.endsWith('Z');
-      const c = v.replace(/Z$/,'');
-      if (c.length === 8) {
-        // Evento de dia inteiro — usar apenas a data
-        return new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}`);
+// ─── Converte string iCal de data/hora para objeto Date ───────────────────────
+function parseIcalDate(v) {
+  const isUTC = v.endsWith('Z');
+  const c = v.replace(/Z$/, '');
+  if (c.length === 8) {
+    // Evento de dia inteiro (ex: 20260611)
+    return new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}`);
+  }
+  const iso = `${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}T${c.slice(9,11)}:${c.slice(11,13)}:${c.slice(13,15)}`;
+  return new Date(isUTC ? iso + 'Z' : iso);
+}
+
+// ─── Expande uma RRULE dentro de uma janela de datas ──────────────────────────
+function expandRrule(dtStart, dtEnd, rruleStr, windowStart, windowEnd) {
+  const duration = dtEnd - dtStart;
+  const rule = rruleStr.toUpperCase();
+
+  const freqM    = rule.match(/FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)/);
+  if (!freqM) return [];
+  const freq     = freqM[1];
+
+  const intM     = rule.match(/INTERVAL=(\d+)/);
+  const interval = intM ? parseInt(intM[1]) : 1;
+
+  const untilM   = rule.match(/UNTIL=(\d{8}T?\d*Z?)/);
+  const until    = untilM ? parseIcalDate(untilM[1]) : null;
+
+  const countM   = rule.match(/COUNT=(\d+)/);
+  const maxCount = countM ? parseInt(countM[1]) : 9999;
+
+  const bydayM   = rule.match(/BYDAY=([^;]+)/);
+  const bydays   = bydayM ? bydayM[1].split(',') : null;
+
+  const dayCode  = ['SU','MO','TU','WE','TH','FR','SA'];
+
+  const instances = [];
+  let cur   = new Date(dtStart);
+  let count = 0;
+  let safety = 0;
+
+  while (cur <= windowEnd && safety++ < 2000) {
+    if (until && cur > until) break;
+    if (count >= maxCount) break;
+
+    // Verificar restrição BYDAY
+    let match = true;
+    if (bydays) {
+      const dc = dayCode[cur.getDay()];
+      match = bydays.some(bd => bd.endsWith(dc));
+    }
+
+    if (match) {
+      const occEnd = new Date(cur.getTime() + duration);
+      if (cur < windowEnd && occEnd > windowStart) {
+        instances.push({ start: new Date(cur), end: occEnd });
       }
-      const iso = `${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}T${c.slice(9,11)}:${c.slice(11,13)}:${c.slice(13,15)}`;
-      // Se UTC, append Z para JS interpretar como UTC (não local)
-      return new Date(isUTC ? iso + 'Z' : iso);
+      count++;
+    }
+
+    // Avançar para a próxima ocorrência
+    const next = new Date(cur);
+    switch (freq) {
+      case 'DAILY':   next.setDate(next.getDate() + interval); break;
+      case 'WEEKLY':
+        // Avança dia a dia dentro da semana se BYDAY especificado, senão 7 dias
+        if (bydays && bydays.length > 1) {
+          next.setDate(next.getDate() + 1);
+        } else {
+          next.setDate(next.getDate() + 7 * interval);
+        }
+        break;
+      case 'MONTHLY': next.setMonth(next.getMonth() + interval); break;
+      case 'YEARLY':  next.setFullYear(next.getFullYear() + interval); break;
+    }
+    cur = next;
+  }
+  return instances;
+}
+
+// ─── Parser principal do iCal ─────────────────────────────────────────────────
+function parseIcal(txt) {
+  // Janela: 60 dias atrás até 180 dias à frente
+  const winStart = new Date(); winStart.setDate(winStart.getDate() - 60);
+  const winEnd   = new Date(); winEnd.setDate(winEnd.getDate() + 180);
+
+  // Juntar linhas dobradas (RFC 5545: linhas que começam com espaço continuam a anterior)
+  const unfolded = txt.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+
+  const evts = [];
+  for (const blk of unfolded.split('BEGIN:VEVENT').slice(1)) {
+    const get = k => {
+      const m = blk.match(new RegExp(k + '(?:;[^:]*)?:([^\r\n]+)'));
+      return m ? m[1].trim() : null;
     };
-    try { evts.push({ start:pd(s), end:pd(e) }); } catch(_) {}
+    const s = get('DTSTART'), e = get('DTEND') || get('DURATION');
+    if (!s) continue;
+
+    let dtStart, dtEnd;
+    try {
+      dtStart = parseIcalDate(s);
+      if (!e) {
+        dtEnd = new Date(dtStart.getTime() + 3600000); // 1h padrão
+      } else if (e.startsWith('P')) {
+        // DURATION format: PT1H, PT30M, P1D etc
+        const hM = e.match(/(\d+)H/), mM = e.match(/(\d+)M/), dM = e.match(/(\d+)D/);
+        const ms = ((dM?parseInt(dM[1]):0)*86400 + (hM?parseInt(hM[1]):0)*3600 + (mM?parseInt(mM[1]):0)*60) * 1000;
+        dtEnd = new Date(dtStart.getTime() + (ms || 3600000));
+      } else {
+        dtEnd = parseIcalDate(e);
+      }
+    } catch(_) { continue; }
+
+    const rrule = get('RRULE');
+
+    if (rrule) {
+      // Evento recorrente — expandir dentro da janela
+      const instances = expandRrule(dtStart, dtEnd, rrule, winStart, winEnd);
+      evts.push(...instances);
+    } else {
+      // Evento único — só incluir se estiver na janela
+      if (dtEnd > winStart && dtStart < winEnd) {
+        evts.push({ start: dtStart, end: dtEnd });
+      }
+    }
   }
   return evts;
 }
