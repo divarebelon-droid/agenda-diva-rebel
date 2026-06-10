@@ -573,33 +573,32 @@ function expandRrule(dtStart, dtEnd, rruleStr, windowStart, windowEnd) {
   return instances;
 }
 
-// ─── Eventos que NÃO bloqueiam a agenda (ficam como disponível) ───────────────
-// Frases exatas ou palavras que, quando presentes no título, liberam o horário
-const FREE_KEYWORDS = [
-  'bloco ouro',
-  'bloco de trabalho',
-  'bloco trabalho',
-  'bloco',                // cobre "🟢 Bloco Ouro", "Bloco Tarde" etc.
-  'café + crianças',      // só o café matinal com os filhos
-  'cafe + criancas',
-  'café com crianças',
-  'cafe com criancas',
-  'leitura',              // blocos de leitura/estudo
-  'estudo',
-  'estudos',
-  'ingles',               // inglês/leitura entra como estudo
-  'aula mentor',          // aula com mentor
-  'aula com mentor',
-  'mentor (fim',          // 🎓 Aula Mentor (fim de semana)
+// ─── Lógica invertida: TUDO é livre por padrão ────────────────────────────────
+// Só bloqueia eventos cujo título contenha palavras de REUNIÃO / COMPROMISSO PROFISSIONAL
+const BUSY_KEYWORDS = [
+  'reunião',
+  'reuniao',
+  'café com',     // café com doutora/cliente (NÃO "café + crianças")
+  'cafe com',
+  'encontro',
+  'treinamento',
+  'cliente',
+  'venda',
+  'fechar',
+  ' r2 ',         // re-reunião (ex: "R2 - Dra Bruna")
+  'r2 -',
+  '- r2',
+  ' r3',
+  'consulta',
+  'atendimento',
 ];
 
-function isFreeEvent(summary) {
+function n(str) { return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+
+function isBusyEvent(summary) {
   if (!summary) return false;
-  const s = summary.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return FREE_KEYWORDS.some(kw => {
-    const k = kw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    return s.includes(k);
-  });
+  const s = n(summary);
+  return BUSY_KEYWORDS.some(kw => s.includes(n(kw)));
 }
 
 // ─── Parser principal do iCal ─────────────────────────────────────────────────
@@ -635,9 +634,9 @@ function parseIcal(txt) {
       }
     } catch(_) { continue; }
 
-    // Ignorar eventos que devem ficar como disponível
+    // Só bloqueia se for reunião/encontro/compromisso profissional
     const summary = get('SUMMARY') || '';
-    if (isFreeEvent(summary)) continue;
+    if (!isBusyEvent(summary)) continue;
 
     const rrule = get('RRULE');
 
