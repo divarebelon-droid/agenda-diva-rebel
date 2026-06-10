@@ -573,6 +573,31 @@ function expandRrule(dtStart, dtEnd, rruleStr, windowStart, windowEnd) {
   return instances;
 }
 
+// ─── Eventos que NÃO bloqueiam a agenda (ficam como disponível) ───────────────
+// Qualquer evento cujo título contenha uma dessas palavras é ignorado
+const FREE_KEYWORDS = [
+  'bloco ouro',
+  'bloco de trabalho',
+  'bloco trabalho',
+  'bloco',       // cobre qualquer "bloco X"
+  'café',        // café da manhã, café com as crianças
+  'cafe',
+  'leitura',
+  'estudo',
+  'estudos',
+  'mentor',
+  'aula com',
+];
+
+function isFreeEvent(summary) {
+  if (!summary) return false;
+  const s = summary.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return FREE_KEYWORDS.some(kw => {
+    const k = kw.normalize('NFD').replace(/[̀-ͯ]/g,'');
+    return s.includes(k);
+  });
+}
+
 // ─── Parser principal do iCal ─────────────────────────────────────────────────
 function parseIcal(txt) {
   // Janela: 60 dias atrás até 180 dias à frente
@@ -605,6 +630,10 @@ function parseIcal(txt) {
         dtEnd = parseIcalDate(e);
       }
     } catch(_) { continue; }
+
+    // Ignorar eventos que devem ficar como disponível
+    const summary = get('SUMMARY') || '';
+    if (isFreeEvent(summary)) continue;
 
     const rrule = get('RRULE');
 
