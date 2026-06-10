@@ -477,7 +477,7 @@ async function syncGcal() {
   }
   setSyncStatus('Sincronizando com Google Agenda…', null);
   try {
-    const url = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(CFG.ical);
+    const url = 'https://corsproxy.io/?' + encodeURIComponent(CFG.ical);
     const r   = await fetch(url, { cache: 'no-cache' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const txt = await r.text();
