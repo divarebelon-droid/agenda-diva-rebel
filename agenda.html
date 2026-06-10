@@ -18,7 +18,8 @@
   --surface:   #f5f4f3;
   --border:    #e8e6e5;
   --avail:     #ffffff;
-  --busy-bg:   #f0edeb;
+  --busy-bg:   #b8b5b3;
+  --busy-txt:  #6b6866;
   --booked-bg: #edf7ed;
   --booked-txt:#1b5e20;
 }
@@ -165,8 +166,8 @@ body {
   content: 'ocupado';
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 600;
-  color: var(--mist); letter-spacing: .05em;
+  font-size: 9px; font-weight: 700;
+  color: var(--busy-txt); letter-spacing: .06em;
   text-transform: uppercase;
 }
 
@@ -413,11 +414,14 @@ body {
 
 <script>
 // ═══════════════════════════════════════════
-// CONFIG
+// CONFIG — defaults fixos, sobrescritos por localStorage
 // ═══════════════════════════════════════════
+const DEFAULT_ICAL = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
+const DEFAULT_WA   = '5511998532255';
+
 const CFG = {
-  get ical()  { return localStorage.getItem('ag2_ical')  || ''; },
-  get wa()    { return localStorage.getItem('ag2_wa')    || ''; },
+  get ical()  { return localStorage.getItem('ag2_ical')  || DEFAULT_ICAL; },
+  get wa()    { return localStorage.getItem('ag2_wa')    || DEFAULT_WA; },
   get start() { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
   get end()   { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
   set ical(v) { localStorage.setItem('ag2_ical',  v); },
@@ -492,11 +496,18 @@ function parseIcal(txt) {
     const get = k => { const m = blk.match(new RegExp(k+'(?:;[^:]*)?:([^\r\n]+)')); return m?m[1].trim():null; };
     const s = get('DTSTART'), e = get('DTEND');
     if (!s||!e) continue;
+    // Fix de timezone: se termina em Z é UTC — manter Z para JS converter corretamente.
+    // Se tem TZID (sem Z) tratar como horário local.
     const pd = v => {
+      const isUTC = v.endsWith('Z');
       const c = v.replace(/Z$/,'');
-      return c.length===8
-        ? new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}`)
-        : new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}T${c.slice(9,11)}:${c.slice(11,13)}:${c.slice(13,15)}`);
+      if (c.length === 8) {
+        // Evento de dia inteiro — usar apenas a data
+        return new Date(`${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}`);
+      }
+      const iso = `${c.slice(0,4)}-${c.slice(4,6)}-${c.slice(6,8)}T${c.slice(9,11)}:${c.slice(11,13)}:${c.slice(13,15)}`;
+      // Se UTC, append Z para JS interpretar como UTC (não local)
+      return new Date(isUTC ? iso + 'Z' : iso);
     };
     try { evts.push({ start:pd(s), end:pd(e) }); } catch(_) {}
   }
