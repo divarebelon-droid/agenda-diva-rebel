@@ -310,6 +310,7 @@ body {
     <span class="week-label" id="weekLabel">—</span>
     <button class="nav-btn" onclick="nextWeek()">&#8250;</button>
   </div>
+  <button class="btn-cfg" onclick="syncGcal()" id="btnRefresh" title="Atualizar agora">↻</button>
   <button class="btn-cfg" onclick="openSettings()" title="Configurações">⚙</button>
 </div>
 
@@ -480,6 +481,8 @@ async function syncGcal() {
     return;
   }
   setSyncStatus('Sincronizando com Google Agenda…', null);
+  const btn = document.getElementById('btnRefresh');
+  if (btn) btn.style.opacity = '0.4';
   try {
     const url = 'https://corsproxy.io/?' + encodeURIComponent(CFG.ical);
     const r   = await fetch(url, { cache: 'no-cache' });
@@ -491,6 +494,8 @@ async function syncGcal() {
     setSyncStatus('Erro ao sincronizar. Verifique o link iCal nas configurações.', false);
     console.error(e);
   }
+  const btn2 = document.getElementById('btnRefresh');
+  if (btn2) btn2.style.opacity = '1';
   renderCal();
 }
 
@@ -798,7 +803,7 @@ function saveSettings() {
 window.addEventListener('DOMContentLoaded', () => {
   renderCal();
   syncGcal();
-  setInterval(syncGcal, 30*60*1000); // resync every 30 min
+  setInterval(syncGcal, 60*1000); // resync a cada 1 minuto
 });
 </script>
 </body>
