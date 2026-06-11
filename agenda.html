@@ -430,16 +430,17 @@ body {
 // ═══════════════════════════════════════════
 // CONFIG — defaults fixos, sobrescritos por localStorage
 // ═══════════════════════════════════════════
-const DEFAULT_ICAL    = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
-const DEFAULT_WA      = '5511998532255';
-const DEFAULT_CU_LIST = '901325435867'; // MAPA ROTINA ALINE
+const DEFAULT_ICAL     = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
+const DEFAULT_WA       = '5511998532255';
+const DEFAULT_CU_TOKEN = 'pk_212515689_T0T980H9ILYUAPDLACEYLE40TD2ED01F';
+const DEFAULT_CU_LIST  = '901325435867'; // MAPA ROTINA ALINE
 
 const CFG = {
   get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
   get wa()       { return localStorage.getItem('ag2_wa')       || DEFAULT_WA; },
   get start()    { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
   get end()      { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
-  get cu_token() { return localStorage.getItem('ag2_cu_tok')   || ''; },
+  get cu_token() { return localStorage.getItem('ag2_cu_tok')   || DEFAULT_CU_TOKEN; },
   get cu_list()  { return localStorage.getItem('ag2_cu_list')  || DEFAULT_CU_LIST; },
   set ical(v)    { localStorage.setItem('ag2_ical',    v); },
   set wa(v)      { localStorage.setItem('ag2_wa',      v); },
