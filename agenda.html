@@ -541,9 +541,12 @@ async function fetchGcal() {
 
 async function fetchClickUp() {
   if (!CFG.cu_token) return [];
-  const apiUrl = `https://api.clickup.com/api/v2/list/${CFG.cu_list}/task?token=${CFG.cu_token}&include_closed=false&subtasks=false`;
+  const apiUrl = `https://api.clickup.com/api/v2/list/${CFG.cu_list}/task?include_closed=false&subtasks=false`;
   const url = 'https://corsproxy.io/?' + encodeURIComponent(apiUrl);
-  const r = await fetch(url, { cache: 'no-cache' });
+  const r = await fetch(url, {
+    cache: 'no-cache',
+    headers: { 'Authorization': CFG.cu_token }
+  });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   const data = await r.json();
   return parseClickUpTasks(data.tasks || []);
