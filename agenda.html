@@ -393,6 +393,19 @@ body {
     </div>
 
     <div class="sdiv"></div>
+    <div class="sdiv-label">Sincronização com ClickUp</div>
+    <div class="mf">
+      <label>Token pessoal do ClickUp</label>
+      <input type="text" id="inp-cu-token" placeholder="pk_xxxxxxxxxxxxxxxxxx" autocomplete="off">
+      <div class="sh">ClickUp → ⚙ Configurações → Apps → <strong>API Token</strong> → Gerar token personal</div>
+    </div>
+    <div class="mf">
+      <label>ID da lista ClickUp</label>
+      <input type="text" id="inp-cu-list" placeholder="901325435867">
+      <div class="sh">Já está preenchido com a sua lista MAPA ROTINA ALINE</div>
+    </div>
+
+    <div class="sdiv"></div>
     <div class="sdiv-label">Janela de horários visíveis</div>
     <div class="time-row">
       <div class="mf">
@@ -417,18 +430,23 @@ body {
 // ═══════════════════════════════════════════
 // CONFIG — defaults fixos, sobrescritos por localStorage
 // ═══════════════════════════════════════════
-const DEFAULT_ICAL = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
-const DEFAULT_WA   = '5511998532255';
+const DEFAULT_ICAL    = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
+const DEFAULT_WA      = '5511998532255';
+const DEFAULT_CU_LIST = '901325435867'; // MAPA ROTINA ALINE
 
 const CFG = {
-  get ical()  { return localStorage.getItem('ag2_ical')  || DEFAULT_ICAL; },
-  get wa()    { return localStorage.getItem('ag2_wa')    || DEFAULT_WA; },
-  get start() { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
-  get end()   { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
-  set ical(v) { localStorage.setItem('ag2_ical',  v); },
-  set wa(v)   { localStorage.setItem('ag2_wa',    v); },
-  set start(v){ localStorage.setItem('ag2_sh', v); },
-  set end(v)  { localStorage.setItem('ag2_eh', v); },
+  get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
+  get wa()       { return localStorage.getItem('ag2_wa')       || DEFAULT_WA; },
+  get start()    { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
+  get end()      { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
+  get cu_token() { return localStorage.getItem('ag2_cu_tok')   || ''; },
+  get cu_list()  { return localStorage.getItem('ag2_cu_list')  || DEFAULT_CU_LIST; },
+  set ical(v)    { localStorage.setItem('ag2_ical',    v); },
+  set wa(v)      { localStorage.setItem('ag2_wa',      v); },
+  set start(v)   { localStorage.setItem('ag2_sh',      v); },
+  set end(v)     { localStorage.setItem('ag2_eh',      v); },
+  set cu_token(v){ localStorage.setItem('ag2_cu_tok',  v); },
+  set cu_list(v) { localStorage.setItem('ag2_cu_list', v); },
 };
 
 // Bookings stored in localStorage { "2026-06-10T09:00": {name, note} }
@@ -473,30 +491,102 @@ function nextWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()+7)
 function goToday() { monday=getMonday(new Date()); renderCal(); }
 
 // ═══════════════════════════════════════════
-// ICAL FETCH + PARSE
+// SYNC — Google Agenda + ClickUp em paralelo
 // ═══════════════════════════════════════════
 async function syncGcal() {
-  if (!CFG.ical) {
-    setSyncStatus('Configure o link do Google Agenda no ⚙ para sincronizar automaticamente', null);
-    return;
-  }
-  setSyncStatus('Sincronizando com Google Agenda…', null);
+  setSyncStatus('Sincronizando…', null);
   const btn = document.getElementById('btnRefresh');
   if (btn) btn.style.opacity = '0.4';
-  try {
-    const url = 'https://corsproxy.io/?' + encodeURIComponent(CFG.ical);
-    const r   = await fetch(url, { cache: 'no-cache' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const txt = await r.text();
-    busy = parseIcal(txt);
-    setSyncStatus(`Sincronizado — ${busy.length} compromisso(s) bloqueado(s) + 1h de respiro`, true);
-  } catch(e) {
-    setSyncStatus('Erro ao sincronizar. Verifique o link iCal nas configurações.', false);
-    console.error(e);
+
+  busy = [];
+  const errors = [];
+
+  const [gcalRes, cuRes] = await Promise.allSettled([
+    fetchGcal(),
+    fetchClickUp(),
+  ]);
+
+  if (gcalRes.status === 'fulfilled') {
+    busy.push(...gcalRes.value);
+  } else {
+    errors.push('Google Agenda');
+    console.error('gcal:', gcalRes.reason);
   }
-  const btn2 = document.getElementById('btnRefresh');
-  if (btn2) btn2.style.opacity = '1';
+
+  if (cuRes.status === 'fulfilled') {
+    busy.push(...cuRes.value);
+  } else if (CFG.cu_token) {
+    errors.push('ClickUp');
+    console.error('clickup:', cuRes.reason);
+  }
+
+  if (errors.length) {
+    setSyncStatus(`Erro em: ${errors.join(' e ')}. Verifique as configurações.`, false);
+  } else {
+    const cuNote = CFG.cu_token ? ' + ClickUp' : '';
+    setSyncStatus(`Sincronizado (Google${cuNote}) — ${busy.length} compromisso(s) bloqueado(s) + 1h de respiro`, true);
+  }
+
+  if (btn) btn.style.opacity = '1';
   renderCal();
+}
+
+async function fetchGcal() {
+  if (!CFG.ical) return [];
+  const url = 'https://corsproxy.io/?' + encodeURIComponent(CFG.ical);
+  const r = await fetch(url, { cache: 'no-cache' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return parseIcal(await r.text());
+}
+
+async function fetchClickUp() {
+  if (!CFG.cu_token) return [];
+  const apiUrl = `https://api.clickup.com/api/v2/list/${CFG.cu_list}/task?token=${CFG.cu_token}&include_closed=false&subtasks=false`;
+  const url = 'https://corsproxy.io/?' + encodeURIComponent(apiUrl);
+  const r = await fetch(url, { cache: 'no-cache' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const data = await r.json();
+  return parseClickUpTasks(data.tasks || []);
+}
+
+function parseClickUpTasks(tasks) {
+  const result = [];
+  const winStart = new Date(); winStart.setDate(winStart.getDate() - 60);
+  const winEnd   = new Date(); winEnd.setDate(winEnd.getDate() + 180);
+
+  for (const task of tasks) {
+    if (!isBusyEvent(task.name)) continue;
+    if (!task.due_date) continue;
+
+    const nameN  = n(task.name);
+    const dueMs  = parseInt(task.due_date);
+    const dueD   = new Date(dueMs);
+
+    // DIA BLOQUEADO → bloqueia das CFG.start às CFG.end nesse dia
+    if (nameN.includes('dia bloqueado')) {
+      const s = new Date(dueD); s.setHours(CFG.start, 0, 0, 0);
+      const e = new Date(dueD); e.setHours(CFG.end,   0, 0, 0);
+      if (e > winStart && s < winEnd) result.push({ start: s, end: e });
+      continue;
+    }
+
+    // TARDE BLOQUEADA → bloqueia das 13h às CFG.end
+    if (nameN.includes('tarde bloqueada') || nameN.includes('tarde bloqueado')) {
+      const s = new Date(dueD); s.setHours(13, 0, 0, 0);
+      const e = new Date(dueD); e.setHours(CFG.end, 0, 0, 0);
+      if (e > winStart && s < winEnd) result.push({ start: s, end: e });
+      continue;
+    }
+
+    // Evento normal: start_date se disponível, senão 1h antes do due
+    const end   = dueD;
+    const start = task.start_date
+      ? new Date(parseInt(task.start_date))
+      : new Date(dueMs - 3600000);
+
+    if (end > winStart && start < winEnd) result.push({ start, end });
+  }
+  return result;
 }
 
 // ─── Converte string iCal de data/hora para objeto Date ───────────────────────
@@ -590,6 +680,9 @@ const BUSY_KEYWORDS = [
   'cliente',
   'venda',
   'fechar',
+  'compromisso',  // compromisso com filha, filho, etc.
+  'bloqueado',    // DIA BLOQUEADO, Tarde Bloqueada
+  'bloqueada',
   ' r2 ',         // re-reunião (ex: "R2 - Dra Bruna")
   'r2 -',
   '- r2',
@@ -781,18 +874,22 @@ function askCancel(k, bk, date) {
 // SETTINGS
 // ═══════════════════════════════════════════
 function openSettings() {
-  document.getElementById('inp-ical').value  = CFG.ical;
-  document.getElementById('inp-wa').value    = CFG.wa;
-  document.getElementById('inp-start').value = String(CFG.start).padStart(2,'0')+':00';
-  document.getElementById('inp-end').value   = String(CFG.end).padStart(2,'0')+':00';
+  document.getElementById('inp-ical').value     = CFG.ical;
+  document.getElementById('inp-wa').value       = CFG.wa;
+  document.getElementById('inp-cu-token').value = CFG.cu_token;
+  document.getElementById('inp-cu-list').value  = CFG.cu_list;
+  document.getElementById('inp-start').value    = String(CFG.start).padStart(2,'0')+':00';
+  document.getElementById('inp-end').value      = String(CFG.end).padStart(2,'0')+':00';
   document.getElementById('settingsOverlay').style.display = 'flex';
 }
 function closeSettings() { document.getElementById('settingsOverlay').style.display = 'none'; }
 function saveSettings() {
-  CFG.ical  = document.getElementById('inp-ical').value.trim();
-  CFG.wa    = document.getElementById('inp-wa').value.trim();
-  CFG.start = parseInt(document.getElementById('inp-start').value)||8;
-  CFG.end   = parseInt(document.getElementById('inp-end').value)||19;
+  CFG.ical     = document.getElementById('inp-ical').value.trim();
+  CFG.wa       = document.getElementById('inp-wa').value.trim();
+  CFG.cu_token = document.getElementById('inp-cu-token').value.trim();
+  CFG.cu_list  = document.getElementById('inp-cu-list').value.trim() || DEFAULT_CU_LIST;
+  CFG.start    = parseInt(document.getElementById('inp-start').value)||8;
+  CFG.end      = parseInt(document.getElementById('inp-end').value)||19;
   closeSettings();
   syncGcal();
 }
