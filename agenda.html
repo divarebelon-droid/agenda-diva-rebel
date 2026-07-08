@@ -479,7 +479,7 @@ function fmtH(d) { return `${String(d.getHours()).padStart(2,'0')}:${String(d.ge
 function key(d) { return d.toISOString().slice(0,16); }
 
 // Buffer de 1h após cada evento — próximo slot só a partir de 1h depois que o evento termina
-const BUFFER_MS = 60 * 60 * 1000;
+const BUFFER_MS = 30 * 60 * 1000;
 function isBusy(s, e) {
   return busy.some(b => b.start < e && (b.end.getTime() + BUFFER_MS) > s.getTime());
 }
