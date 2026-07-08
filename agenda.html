@@ -559,6 +559,10 @@ function parseClickUpTasks(tasks) {
   const winEnd   = new Date(); winEnd.setDate(winEnd.getDate() + 180);
 
   for (const task of tasks) {
+    // Ignorar tarefas canceladas ou concluídas
+    const statusName = (typeof task.status === 'object' ? task.status?.status : task.status || '').toLowerCase();
+    if (statusName.includes('cancel') || statusName === 'done' || statusName === 'complete' || statusName === 'fechado' || statusName === 'feito') continue;
+
     if (!isBusyEvent(task.name)) continue;
     if (!task.due_date) continue;
 
