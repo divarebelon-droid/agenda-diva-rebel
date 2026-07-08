@@ -702,6 +702,7 @@ function n(str) { return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, 
 function isBusyEvent(summary) {
   if (!summary) return false;
   const s = n(summary);
+  if (s.includes('bloco')) return false; // blocos de trabalho ficam livres
   return BUSY_KEYWORDS.some(kw => s.includes(n(kw)));
 }
 
