@@ -586,11 +586,11 @@ function parseClickUpTasks(tasks) {
       continue;
     }
 
-    // Evento normal: start_date se disponível, senão 1h antes do due
-    const end   = dueD;
-    const start = task.start_date
+    // due_date = horário de INÍCIO da reunião; end = start + 1h (ou start_date se disponível)
+    const start = dueD;
+    const end   = task.start_date
       ? new Date(parseInt(task.start_date))
-      : new Date(dueMs - 3600000);
+      : new Date(dueMs + 3600000);
 
     if (end > winStart && start < winEnd) result.push({ start, end });
   }
