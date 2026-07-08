@@ -525,7 +525,7 @@ async function syncGcal() {
     setSyncStatus(`Erro em: ${errors.join(' e ')}. Verifique as configurações.`, false);
   } else {
     const cuNote = CFG.cu_token ? ' + ClickUp' : '';
-    setSyncStatus(`Sincronizado (Google${cuNote}) — ${busy.length} compromisso(s) bloqueado(s) + 1h de respiro`, true);
+    setSyncStatus(`Sincronizado (Google${cuNote}) — ${busy.length} compromisso(s) bloqueado(s) + 30min de respiro`, true);
   }
 
   if (btn) btn.style.opacity = '1';
