@@ -434,6 +434,7 @@ const DEFAULT_ICAL     = 'https://calendar.google.com/calendar/ical/divarebel.on
 const DEFAULT_WA       = '5511998532255';
 const DEFAULT_CU_TOKEN = 'pk_212515689_T0T980H9ILYUAPDLACEYLE40TD2ED01F';
 const DEFAULT_CU_LIST  = '901325435867'; // MAPA ROTINA ALINE
+const WEBHOOK_URL      = 'https://script.google.com/macros/s/AKfycbyfbSeXY9-RXX2i0ydbWNmL7gRzwx1nNSMUOBCEjY2gE-mn5v6yzXJboajw_YJ4YnkhYA/exec';
 
 const CFG = {
   get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
@@ -859,8 +860,16 @@ function confirmBook() {
   bks[k] = { name, note };
   setBookings(bks);
 
-  // WhatsApp link
+  // Sincronizar com Google Agenda + ClickUp via webhook
   const d   = pending;
+  const endD = new Date(d.getTime() + 3600000);
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, notes: note, start: d.getTime(), end: endD.getTime() })
+  }).catch(() => {}); // falha silenciosa — reserva local já foi salva
+
+  // WhatsApp link
   const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} às ${fmtH(d)}\n👤 ${name}${note?'\n📝 '+note:''}`;
   const wa  = CFG.wa;
   document.getElementById('doneText').textContent = `${name} · ${fmt(d)} às ${fmtH(d)}`;
