@@ -440,7 +440,7 @@ const CFG = {
   get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
   get wa()       { return localStorage.getItem('ag2_wa')       || DEFAULT_WA; },
   get start()    { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
-  get end()      { return parseInt(localStorage.getItem('ag2_eh') || '19'); },
+  get end()      { return parseInt(localStorage.getItem('ag2_eh') || '20'); },
   get cu_token() { return localStorage.getItem('ag2_cu_tok')   || DEFAULT_CU_TOKEN; },
   get cu_list()  { return localStorage.getItem('ag2_cu_list')  || DEFAULT_CU_LIST; },
   set ical(v)    { localStorage.setItem('ag2_ical',    v); },
@@ -450,6 +450,9 @@ const CFG = {
   set cu_token(v){ localStorage.setItem('ag2_cu_tok',  v); },
   set cu_list(v) { localStorage.setItem('ag2_cu_list', v); },
 };
+
+// Migração: se estava salvo com o antigo padrão 19h, remove para cair no novo padrão 20h
+if (localStorage.getItem('ag2_eh') === '19') localStorage.removeItem('ag2_eh');
 
 // Bookings stored in localStorage { "2026-06-10T09:00": {name, note} }
 const getBookings = () => JSON.parse(localStorage.getItem('ag2_bk') || '{}');
@@ -860,10 +863,10 @@ function confirmBook() {
   bks[k] = { name, note };
   setBookings(bks);
 
-  // Sincronizar com Google Agenda + ClickUp via webhook
-  const d   = pending;
+  // Sincronizar com Google Agenda + ClickUp via webhook (via proxy para evitar CORS)
+  const d    = pending;
   const endD = new Date(d.getTime() + 3600000);
-  fetch(WEBHOOK_URL, {
+  fetch('https://corsproxy.io/?' + encodeURIComponent(WEBHOOK_URL), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, notes: note, start: d.getTime(), end: endD.getTime() })
