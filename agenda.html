@@ -440,7 +440,7 @@ const CFG = {
   get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
   get wa()       { return localStorage.getItem('ag2_wa')       || DEFAULT_WA; },
   get start()    { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
-  get end()      { return parseInt(localStorage.getItem('ag2_eh') || '20'); },
+  get end()      { return parseInt(localStorage.getItem('ag2_eh') || '21'); },
   get cu_token() { return localStorage.getItem('ag2_cu_tok')   || DEFAULT_CU_TOKEN; },
   get cu_list()  { return localStorage.getItem('ag2_cu_list')  || DEFAULT_CU_LIST; },
   set ical(v)    { localStorage.setItem('ag2_ical',    v); },
@@ -451,8 +451,8 @@ const CFG = {
   set cu_list(v) { localStorage.setItem('ag2_cu_list', v); },
 };
 
-// Migração: se estava salvo com o antigo padrão 19h, remove para cair no novo padrão 20h
-if (localStorage.getItem('ag2_eh') === '19') localStorage.removeItem('ag2_eh');
+// Migração: se estava salvo com padrão antigo (19 ou 20), remove para cair no novo padrão 21
+if (['19','20'].includes(localStorage.getItem('ag2_eh'))) localStorage.removeItem('ag2_eh');
 
 // Bookings stored in localStorage { "2026-06-10T09:00": {name, note} }
 const getBookings = () => JSON.parse(localStorage.getItem('ag2_bk') || '{}');
