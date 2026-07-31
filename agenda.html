@@ -707,10 +707,18 @@ const BUSY_KEYWORDS = [
 
 function n(str) { return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 
+// Google Agenda: bloqueia TUDO exceto blocos de trabalho (Bloco Bronze, Bloco Ouro…)
+function isBusyGcalEvent(summary) {
+  if (!summary) return false;
+  const s = n(summary);
+  return !/\bbloco\b/.test(s);
+}
+
+// ClickUp: só bloqueia tarefas com palavras-chave de reunião/compromisso
 function isBusyEvent(summary) {
   if (!summary) return false;
   const s = n(summary);
-  if (/\bbloco\b/.test(s)) return false; // "Bloco Bronze/Ouro" = livre; "bloqueado" não é afetado
+  if (/\bbloco\b/.test(s)) return false;
   return BUSY_KEYWORDS.some(kw => s.includes(n(kw)));
 }
 
@@ -747,9 +755,9 @@ function parseIcal(txt) {
       }
     } catch(_) { continue; }
 
-    // Só bloqueia se for reunião/encontro/compromisso profissional
+    // Bloqueia tudo do Google Agenda exceto blocos de trabalho (Bloco Bronze/Ouro)
     const summary = get('SUMMARY') || '';
-    if (!isBusyEvent(summary)) continue;
+    if (!isBusyGcalEvent(summary)) continue;
 
     const rrule = get('RRULE');
 
