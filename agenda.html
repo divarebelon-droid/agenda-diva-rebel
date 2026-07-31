@@ -683,38 +683,25 @@ function expandRrule(dtStart, dtEnd, rruleStr, windowStart, windowEnd) {
 // ─── Lógica invertida: TUDO é livre por padrão ────────────────────────────────
 // Só bloqueia eventos cujo título contenha palavras de REUNIÃO / COMPROMISSO PROFISSIONAL
 const BUSY_KEYWORDS = [
-  'reunião',
-  'reuniao',
-  'reuniões',
-  'reunioes',
-  'café com',     // café com doutora/cliente (NÃO "café + crianças")
-  'cafe com',
+  'reunião', 'reuniao', 'reuniões', 'reunioes',
+  'café com', 'cafe com',
   'encontro',
   'treinamento',
   'cliente',
-  'venda',
-  'fechar',
-  'compromisso',  // compromisso com filha, filho, etc.
-  'bloqueado',    // DIA BLOQUEADO, Tarde Bloqueada
-  'bloqueada',
-  ' r2 ',         // re-reunião (ex: "R2 - Dra Bruna")
-  'r2 -',
-  '- r2',
-  ' r3',
-  'consulta',
-  'atendimento',
+  'venda', 'fechar',
+  'compromisso',
+  'bloqueado', 'bloqueada',
+  'folga',
+  ' r2 ', 'r2 -', '- r2', ' r3',
+  'consulta', 'atendimento',
+  'dra.', 'dra ', 'dr.', 'dr ',
+  'médico', 'medico', 'médica', 'medica',
+  'execução', 'execucao',
 ];
 
 function n(str) { return str.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 
-// Google Agenda: bloqueia TUDO exceto blocos de trabalho (Bloco Bronze, Bloco Ouro…)
-function isBusyGcalEvent(summary) {
-  if (!summary) return false;
-  const s = n(summary);
-  return !/\bbloco\b/.test(s);
-}
-
-// ClickUp: só bloqueia tarefas com palavras-chave de reunião/compromisso
+// Bloqueia se o título contiver palavra de reunião/compromisso — exceto "Bloco" de trabalho
 function isBusyEvent(summary) {
   if (!summary) return false;
   const s = n(summary);
@@ -755,9 +742,9 @@ function parseIcal(txt) {
       }
     } catch(_) { continue; }
 
-    // Bloqueia tudo do Google Agenda exceto blocos de trabalho (Bloco Bronze/Ouro)
+    // Bloqueia se título contiver palavra de reunião/compromisso
     const summary = get('SUMMARY') || '';
-    if (!isBusyGcalEvent(summary)) continue;
+    if (!isBusyEvent(summary)) continue;
 
     const rrule = get('RRULE');
 
