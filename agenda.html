@@ -130,7 +130,7 @@ body {
 .grid-body { display: grid; grid-template-columns: 52px repeat(7, 1fr); }
 
 .tlabel {
-  height: 48px;
+  height: 36px;
   display: flex; align-items: center; justify-content: flex-end;
   padding-right: 9px;
   font-size: 10px; font-weight: 600; color: var(--pebble);
@@ -139,7 +139,7 @@ body {
 }
 
 .slot {
-  height: 48px;
+  height: 36px;
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   position: relative;
@@ -214,7 +214,7 @@ body {
 .modal-sub { font-size: 12px; color: var(--gravel); margin-top: 3px; margin-bottom: 24px; }
 .mf        { margin-bottom: 14px; }
 .mf label  { display: block; font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--graphite); margin-bottom: 5px; }
-.mf input, .mf textarea {
+.mf input, .mf textarea, .mf select {
   width: 100%; padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: 6px;
@@ -222,7 +222,8 @@ body {
   background: var(--surface); outline: none;
   transition: border-color .15s;
 }
-.mf input:focus, .mf textarea:focus { border-color: var(--graphite); background: var(--white); }
+.mf select { cursor: pointer; }
+.mf input:focus, .mf textarea:focus, .mf select:focus { border-color: var(--graphite); background: var(--white); }
 .mf textarea { resize: vertical; min-height: 72px; }
 .mactions { display: flex; gap: 10px; margin-top: 22px; }
 
@@ -344,6 +345,10 @@ body {
     <div class="mf">
       <label>Nome do cliente ou pessoa *</label>
       <input type="text" id="bName" placeholder="Ex: Dra. Maria, João Silva, Reunião Oficina…" autocomplete="off">
+    </div>
+    <div class="mf">
+      <label>Horário de término *</label>
+      <select id="bEndTime"></select>
     </div>
     <div class="mf">
       <label>Observação (opcional)</label>
@@ -796,29 +801,36 @@ function renderCal() {
   // Body
   const body = document.getElementById('gridBody');
   body.innerHTML = '';
-  const bks = getBookings();
 
-  for (let h=CFG.start; h<CFG.end; h++) {
-    // Hour label
+  for (let h = CFG.start; h < CFG.end; h += 0.5) {
+    const hh = Math.floor(h);
+    const mm = h % 1 === 0 ? 0 : 30;
+
     const lbl = document.createElement('div');
     lbl.className = 'tlabel';
-    lbl.textContent = `${String(h).padStart(2,'0')}h`;
+    lbl.textContent = `${String(hh).padStart(2,'0')}:${mm === 0 ? '00' : '30'}`;
     body.appendChild(lbl);
 
-    for (let i=0;i<7;i++) {
-      const d = new Date(monday); d.setDate(d.getDate()+i); d.setHours(h,0,0,0);
-      const de = new Date(d); de.setHours(h+1);
-      const k  = key(d);
-      const bk = bks[k];
-      const oc = isBusy(d, de);
+    for (let i = 0; i < 7; i++) {
+      const d  = new Date(monday); d.setDate(d.getDate() + i); d.setHours(hh, mm, 0, 0);
+      const de = new Date(d.getTime() + 30 * 60 * 1000);
+
+      const found = findBookingForSlot(d, de);
+      const oc    = isBusy(d, de);
 
       const sl = document.createElement('div');
 
-      if (bk) {
+      if (found) {
+        const { bkKey, bk, isPrimary } = found;
         sl.className = 'slot booked';
-        sl.innerHTML = `<div class="bname">${bk.name}</div><div class="blabel">Reservado</div>`;
+        if (isPrimary) {
+          sl.innerHTML = `<div class="bname">${bk.name}</div><div class="blabel">Reservado</div>`;
+        } else {
+          sl.innerHTML = `<div class="bname" style="opacity:.45;font-size:10px">${bk.name}</div>`;
+        }
         sl.title = `${bk.name}${bk.note?' — '+bk.note:''}`;
-        sl.onclick = () => askCancel(k, bk, d);
+        const bkStart = new Date(bk.startTs !== undefined ? bk.startTs : new Date(bkKey).getTime());
+        sl.onclick = () => askCancel(bkKey, bk, bkStart);
       } else if (oc) {
         sl.className = 'slot busy';
       } else {
@@ -831,12 +843,42 @@ function renderCal() {
 }
 
 // ═══════════════════════════════════════════
+// BOOKING HELPERS
+// ═══════════════════════════════════════════
+function findBookingForSlot(slotStart, slotEnd) {
+  const bks = getBookings();
+  for (const [k, bk] of Object.entries(bks)) {
+    const bs = bk.startTs !== undefined ? bk.startTs : new Date(k).getTime();
+    const be = bk.endTs   !== undefined ? bk.endTs   : bs + 3600000; // 1h compat para reservas antigas
+    if (bs < slotEnd.getTime() && be > slotStart.getTime()) {
+      return { bkKey: key(new Date(bs)), bk, isPrimary: Math.abs(slotStart.getTime() - bs) < 1000 };
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════
 // BOOKING FLOW
 // ═══════════════════════════════════════════
 function openBook(date) {
   pending = date;
   document.getElementById('mTitle').textContent = `${DAYS[date.getDay()]}, ${fmt(date)}`;
-  document.getElementById('mSub').textContent   = `${fmtH(date)} — ${String(date.getHours()+1).padStart(2,'0')}:00`;
+  document.getElementById('mSub').textContent   = `Início: ${fmtH(date)}`;
+
+  // Populat seletor de horário de término (de +30min até CFG.end)
+  const sel = document.getElementById('bEndTime');
+  sel.innerHTML = '';
+  const startFrac = date.getHours() + date.getMinutes() / 60;
+  for (let h = startFrac + 0.5; h <= CFG.end; h += 0.5) {
+    const hh = Math.floor(h);
+    const mm = h % 1 === 0 ? '00' : '30';
+    const opt = document.createElement('option');
+    opt.value = `${hh}:${mm}`;
+    opt.textContent = `${String(hh).padStart(2,'0')}:${mm}`;
+    if (h === startFrac + 0.5) opt.selected = true;
+    sel.appendChild(opt);
+  }
+
   document.getElementById('bName').value = '';
   document.getElementById('bNote').value = '';
   document.getElementById('bookOverlay').style.display = 'flex';
@@ -854,23 +896,28 @@ function confirmBook() {
   const note = document.getElementById('bNote').value.trim();
   const k    = key(pending);
 
+  // Horário de término selecionado
+  const endTimeStr = document.getElementById('bEndTime').value;
+  const [eh, em]   = endTimeStr.split(':').map(Number);
+  const endD = new Date(pending);
+  endD.setHours(eh, em, 0, 0);
+
   const bks = getBookings();
-  bks[k] = { name, note };
+  bks[k] = { name, note, startTs: pending.getTime(), endTs: endD.getTime() };
   setBookings(bks);
 
-  // Sincronizar com Google Agenda + ClickUp via webhook (via proxy para evitar CORS)
-  const d    = pending;
-  const endD = new Date(d.getTime() + 3600000);
+  // Sincronizar com Google Agenda + ClickUp via webhook
   fetch('https://corsproxy.io/?' + encodeURIComponent(WEBHOOK_URL), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, notes: note, start: d.getTime(), end: endD.getTime() })
-  }).catch(() => {}); // falha silenciosa — reserva local já foi salva
+    body: JSON.stringify({ name, notes: note, start: pending.getTime(), end: endD.getTime() })
+  }).catch(() => {});
 
   // WhatsApp link
-  const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} às ${fmtH(d)}\n👤 ${name}${note?'\n📝 '+note:''}`;
+  const d   = pending;
+  const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}\n👤 ${name}${note?'\n📝 '+note:''}`;
   const wa  = CFG.wa;
-  document.getElementById('doneText').textContent = `${name} · ${fmt(d)} às ${fmtH(d)}`;
+  document.getElementById('doneText').textContent = `${name} · ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}`;
   const waBtn = document.getElementById('waBtn');
   if (wa) { waBtn.href = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`; waBtn.style.display='flex'; }
   else    { waBtn.style.display='none'; }
@@ -883,7 +930,8 @@ function confirmBook() {
 function closeDone() { document.getElementById('doneOverlay').style.display = 'none'; }
 
 function askCancel(k, bk, date) {
-  if (confirm(`Cancelar a reserva de "${bk.name}" em ${fmt(date)} às ${fmtH(date)}?`)) {
+  const endD = bk.endTs ? new Date(bk.endTs) : new Date(date.getTime() + 1800000);
+  if (confirm(`Cancelar a reserva de "${bk.name}" em ${fmt(date)} das ${fmtH(date)} às ${fmtH(endD)}?`)) {
     const bks = getBookings(); delete bks[k]; setBookings(bks); renderCal();
   }
 }
