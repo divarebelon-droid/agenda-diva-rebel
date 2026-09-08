@@ -356,7 +356,7 @@ body {
     </div>
     <div class="mactions">
       <button class="btn-secondary" onclick="closeBook()">Cancelar</button>
-      <button class="btn-primary" onclick="confirmBook()">✓ Confirmar reserva</button>
+      <button class="btn-primary" id="confirmBookingBtn" onclick="confirmBook()">✓ Confirmar reserva</button>
     </div>
   </div>
 </div>
@@ -378,36 +378,13 @@ body {
 <div class="overlay" id="settingsOverlay" style="display:none">
   <div class="settings-card">
     <h1>⚙ Configurações</h1>
-    <p>Configure a sincronização com o Google Agenda para que os horários ocupados apareçam automaticamente.</p>
+    <p>A sincronização com Google Agenda e ClickUp é automática e protegida pelo servidor.</p>
 
-    <div class="sdiv-label">Sincronização com Google Agenda</div>
-    <div class="mf">
-      <label>Endereço Secreto iCal do Google Agenda</label>
-      <input type="url" id="inp-ical" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
-      <div class="sh">
-        Google Agenda → ⚙ Configurações → clique no nome da agenda → role até <strong>"Endereço secreto no formato iCal"</strong> → copie o link
-      </div>
-    </div>
-
-    <div class="sdiv"></div>
     <div class="sdiv-label">Contato para notificações</div>
     <div class="mf">
       <label>Número WhatsApp (DDI + DDD + número)</label>
       <input type="tel" id="inp-wa" placeholder="5511999999999">
       <div class="sh">Ex: 5511912345678 &nbsp;(Brasil +55 + DDD + 9 dígitos)</div>
-    </div>
-
-    <div class="sdiv"></div>
-    <div class="sdiv-label">Sincronização com ClickUp</div>
-    <div class="mf">
-      <label>Token pessoal do ClickUp</label>
-      <input type="text" id="inp-cu-token" placeholder="pk_xxxxxxxxxxxxxxxxxx" autocomplete="off">
-      <div class="sh">ClickUp → ⚙ Configurações → Apps → <strong>API Token</strong> → Gerar token personal</div>
-    </div>
-    <div class="mf">
-      <label>ID da lista ClickUp</label>
-      <input type="text" id="inp-cu-list" placeholder="901325435867">
-      <div class="sh">Já está preenchido com a sua lista MAPA ROTINA ALINE</div>
     </div>
 
     <div class="sdiv"></div>
@@ -433,28 +410,24 @@ body {
 
 <script>
 // ═══════════════════════════════════════════
-// CONFIG — defaults fixos, sobrescritos por localStorage
+// CONFIG — sincronização centralizada no Apps Script; nenhum segredo fica no site público
 // ═══════════════════════════════════════════
-const DEFAULT_ICAL     = 'https://calendar.google.com/calendar/ical/divarebel.on%40gmail.com/private-239bb1f53667d015d3c7434770adabc4/basic.ics';
 const DEFAULT_WA       = '5511998532255';
-const DEFAULT_CU_TOKEN = 'pk_212515689_T0T980H9ILYUAPDLACEYLE40TD2ED01F';
-const DEFAULT_CU_LIST  = '901325435867'; // MAPA ROTINA ALINE
 const WEBHOOK_URL      = 'https://script.google.com/macros/s/AKfycbyfbSeXY9-RXX2i0ydbWNmL7gRzwx1nNSMUOBCEjY2gE-mn5v6yzXJboajw_YJ4YnkhYA/exec';
 
 const CFG = {
-  get ical()     { return localStorage.getItem('ag2_ical')     || DEFAULT_ICAL; },
   get wa()       { return localStorage.getItem('ag2_wa')       || DEFAULT_WA; },
   get start()    { return parseInt(localStorage.getItem('ag2_sh') || '8'); },
   get end()      { return parseInt(localStorage.getItem('ag2_eh') || '21'); },
-  get cu_token() { return localStorage.getItem('ag2_cu_tok')   || DEFAULT_CU_TOKEN; },
-  get cu_list()  { return localStorage.getItem('ag2_cu_list')  || DEFAULT_CU_LIST; },
-  set ical(v)    { localStorage.setItem('ag2_ical',    v); },
   set wa(v)      { localStorage.setItem('ag2_wa',      v); },
   set start(v)   { localStorage.setItem('ag2_sh',      v); },
   set end(v)     { localStorage.setItem('ag2_eh',      v); },
-  set cu_token(v){ localStorage.setItem('ag2_cu_tok',  v); },
-  set cu_list(v) { localStorage.setItem('ag2_cu_list', v); },
 };
+
+// Remove credenciais que versões antigas possam ter deixado neste navegador.
+localStorage.removeItem('ag2_ical');
+localStorage.removeItem('ag2_cu_tok');
+localStorage.removeItem('ag2_cu_list');
 
 // Migração: se estava salvo com padrão antigo (19 ou 20), remove para cair no novo padrão 21
 if (['19','20'].includes(localStorage.getItem('ag2_eh'))) localStorage.removeItem('ag2_eh');
@@ -472,6 +445,7 @@ const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov
 let monday   = getMonday(new Date());
 let busy     = []; // [{start:Date, end:Date}]
 let pending  = null;
+let syncHealthy = false;
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -496,26 +470,80 @@ function isBusy(s, e) {
 // ═══════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════
-function prevWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()-7); renderCal(); }
-function nextWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()+7); renderCal(); }
-function goToday() { monday=getMonday(new Date()); renderCal(); }
+function prevWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()-7); syncGcal(); }
+function nextWeek(){ monday=new Date(monday); monday.setDate(monday.getDate()+7); syncGcal(); }
+function goToday() { monday=getMonday(new Date()); syncGcal(); }
 
 // ═══════════════════════════════════════════
 // SYNC — Google Agenda + ClickUp em paralelo
 // ═══════════════════════════════════════════
+let syncRequestNumber = 0;
+
+function loadJsonp(params, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const callback = `__agendaCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => finish(new Error('Tempo limite de sincronização excedido.')), timeoutMs);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callback];
+      script.remove();
+    }
+    function finish(error, value) {
+      cleanup();
+      error ? reject(error) : resolve(value);
+    }
+
+    window[callback] = data => finish(null, data);
+    script.onerror = () => finish(new Error('Não foi possível acessar o servidor da agenda.'));
+
+    const url = new URL(WEBHOOK_URL);
+    Object.entries({ ...params, callback, _: Date.now() }).forEach(([key, value]) => url.searchParams.set(key, value));
+    script.src = url.toString();
+    document.head.appendChild(script);
+  });
+}
+
 async function syncGcal() {
+  const requestNumber = ++syncRequestNumber;
+  syncHealthy = false;
+  busy = [];
   setSyncStatus('Sincronizando…', null);
   const btn = document.getElementById('btnRefresh');
   if (btn) btn.style.opacity = '0.4';
+  renderCal();
 
-  busy = [];
-  const errors = [];
+  const windowStart = new Date(monday);
+  windowStart.setHours(0, 0, 0, 0);
+  const windowEnd = new Date(windowStart);
+  windowEnd.setDate(windowEnd.getDate() + 7);
 
-  const [gcalRes, cuRes] = await Promise.allSettled([
-    fetchGcal(),
-    fetchClickUp(),
-  ]);
+  try {
+    const data = await loadJsonp({ action: 'busy', start: windowStart.getTime(), end: windowEnd.getTime() });
+    if (requestNumber !== syncRequestNumber) return;
+    if (!data || !data.ok || !Array.isArray(data.busy)) throw new Error(data?.error || 'Resposta inválida do servidor.');
 
+    busy = data.busy
+      .map(item => ({ start: new Date(Number(item.start)), end: new Date(Number(item.end)) }))
+      .filter(item => !isNaN(item.start) && !isNaN(item.end) && item.end > item.start);
+    syncHealthy = true;
+    setSyncStatus(`Sincronizado — Google: ${data.googleCount || 0}, ClickUp: ${data.clickupCount || 0} + 30min de respiro`, true);
+  } catch (error) {
+    if (requestNumber !== syncRequestNumber) return;
+    busy = [];
+    syncHealthy = false;
+    setSyncStatus('Agenda temporariamente indisponível — nenhum horário pode ser reservado.', false);
+    console.error('sync:', error);
+  } finally {
+    if (requestNumber === syncRequestNumber) {
+      if (btn) btn.style.opacity = '1';
+      renderCal();
+    }
+  }
+}
+
+async function syncGcalLegacy() {
   if (gcalRes.status === 'fulfilled') {
     busy.push(...gcalRes.value);
   } else {
@@ -817,6 +845,7 @@ function renderCal() {
 
       const found = findBookingForSlot(d, de);
       const oc    = isBusy(d, de);
+      const past  = d.getTime() <= Date.now();
 
       const sl = document.createElement('div');
 
@@ -831,8 +860,10 @@ function renderCal() {
         sl.title = `${bk.name}${bk.note?' — '+bk.note:''}`;
         const bkStart = new Date(bk.startTs !== undefined ? bk.startTs : new Date(bkKey).getTime());
         sl.onclick = () => askCancel(bkKey, bk, bkStart);
-      } else if (oc) {
+      } else if (oc || !syncHealthy || past) {
         sl.className = 'slot busy';
+        if (!syncHealthy) sl.title = 'Indisponível enquanto a agenda sincroniza';
+        else if (past) sl.title = 'Este horário já passou';
       } else {
         sl.className = 'slot avail';
         sl.onclick = () => openBook(d);
@@ -861,6 +892,10 @@ function findBookingForSlot(slotStart, slotEnd) {
 // BOOKING FLOW
 // ═══════════════════════════════════════════
 function openBook(date) {
+  if (!syncHealthy || date.getTime() <= Date.now()) {
+    alert('Este horário não está disponível. Atualize a agenda e tente novamente.');
+    return;
+  }
   pending = date;
   document.getElementById('mTitle').textContent = `${DAYS[date.getDay()]}, ${fmt(date)}`;
   document.getElementById('mSub').textContent   = `Início: ${fmtH(date)}`;
@@ -889,10 +924,27 @@ function closeBook() {
   pending = null;
 }
 
-function confirmBook() {
+const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+async function waitBookingResult(requestId) {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const result = await loadJsonp({ action: 'result', id: requestId }, 10000);
+    if (!result.pending) return result;
+    await wait(750);
+  }
+  throw new Error('A confirmação demorou mais que o esperado. Atualize a agenda antes de tentar novamente.');
+}
+
+async function confirmBook() {
   const name = document.getElementById('bName').value.trim();
   if (!name) { document.getElementById('bName').focus(); document.getElementById('bName').style.borderColor='#e53935'; return; }
   document.getElementById('bName').style.borderColor='';
+  if (!pending || !syncHealthy || pending.getTime() <= Date.now()) {
+    alert('A agenda precisa estar sincronizada e o horário deve estar no futuro.');
+    closeBook();
+    syncGcal();
+    return;
+  }
   const note = document.getElementById('bNote').value.trim();
   const k    = key(pending);
 
@@ -901,30 +953,54 @@ function confirmBook() {
   const [eh, em]   = endTimeStr.split(':').map(Number);
   const endD = new Date(pending);
   endD.setHours(eh, em, 0, 0);
+  if (endD <= pending || isBusy(pending, endD)) {
+    alert('Esse intervalo não está mais disponível. Atualize a agenda e escolha outro horário.');
+    closeBook();
+    syncGcal();
+    return;
+  }
 
-  const bks = getBookings();
-  bks[k] = { name, note, startTs: pending.getTime(), endTs: endD.getTime() };
-  setBookings(bks);
+  const button = document.getElementById('confirmBookingBtn');
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Confirmando…';
 
-  // Sincronizar com Google Agenda + ClickUp via webhook
-  fetch('https://corsproxy.io/?' + encodeURIComponent(WEBHOOK_URL), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, notes: note, start: pending.getTime(), end: endD.getTime() })
-  }).catch(() => {});
+  const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-  // WhatsApp link
-  const d   = pending;
-  const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}\n👤 ${name}${note?'\n📝 '+note:''}`;
-  const wa  = CFG.wa;
-  document.getElementById('doneText').textContent = `${name} · ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}`;
-  const waBtn = document.getElementById('waBtn');
-  if (wa) { waBtn.href = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`; waBtn.style.display='flex'; }
-  else    { waBtn.style.display='none'; }
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ requestId, name, notes: note, start: pending.getTime(), end: endD.getTime() })
+    });
 
-  closeBook();
-  document.getElementById('doneOverlay').style.display = 'flex';
-  renderCal();
+    const result = await waitBookingResult(requestId);
+    if (!result.ok) throw new Error(result.error || 'Não foi possível criar a reserva.');
+
+    const bks = getBookings();
+    bks[k] = { name, note, startTs: pending.getTime(), endTs: endD.getTime() };
+    setBookings(bks);
+
+    // WhatsApp link
+    const d   = pending;
+    const msg = `Olá Aline! Reservei um horário na sua agenda:\n📅 ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}\n👤 ${name}${note?'\n📝 '+note:''}`;
+    const wa  = CFG.wa;
+    document.getElementById('doneText').textContent = `${name} · ${fmt(d)} das ${fmtH(d)} às ${fmtH(endD)}`;
+    const waBtn = document.getElementById('waBtn');
+    if (wa) { waBtn.href = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`; waBtn.style.display='flex'; }
+    else    { waBtn.style.display='none'; }
+
+    closeBook();
+    document.getElementById('doneOverlay').style.display = 'flex';
+    await syncGcal();
+  } catch (error) {
+    alert(error.message || 'Não foi possível confirmar a reserva.');
+    await syncGcal();
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }
 
 function closeDone() { document.getElementById('doneOverlay').style.display = 'none'; }
@@ -940,20 +1016,14 @@ function askCancel(k, bk, date) {
 // SETTINGS
 // ═══════════════════════════════════════════
 function openSettings() {
-  document.getElementById('inp-ical').value     = CFG.ical;
   document.getElementById('inp-wa').value       = CFG.wa;
-  document.getElementById('inp-cu-token').value = CFG.cu_token;
-  document.getElementById('inp-cu-list').value  = CFG.cu_list;
   document.getElementById('inp-start').value    = String(CFG.start).padStart(2,'0')+':00';
   document.getElementById('inp-end').value      = String(CFG.end).padStart(2,'0')+':00';
   document.getElementById('settingsOverlay').style.display = 'flex';
 }
 function closeSettings() { document.getElementById('settingsOverlay').style.display = 'none'; }
 function saveSettings() {
-  CFG.ical     = document.getElementById('inp-ical').value.trim();
   CFG.wa       = document.getElementById('inp-wa').value.trim();
-  CFG.cu_token = document.getElementById('inp-cu-token').value.trim();
-  CFG.cu_list  = document.getElementById('inp-cu-list').value.trim() || DEFAULT_CU_LIST;
   CFG.start    = parseInt(document.getElementById('inp-start').value)||8;
   CFG.end      = parseInt(document.getElementById('inp-end').value)||19;
   closeSettings();
