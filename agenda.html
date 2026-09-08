@@ -446,6 +446,7 @@ let monday   = getMonday(new Date());
 let busy     = []; // [{start:Date, end:Date}]
 let pending  = null;
 let syncHealthy = false;
+let syncedWindowStart = null;
 
 // ═══════════════════════════════════════════
 // HELPERS
@@ -511,17 +512,21 @@ function loadBridge(params, timeoutMs = 20000) {
 
 async function syncGcal() {
   const requestNumber = ++syncRequestNumber;
-  syncHealthy = false;
-  busy = [];
-  setSyncStatus('Sincronizando…', null);
-  const btn = document.getElementById('btnRefresh');
-  if (btn) btn.style.opacity = '0.4';
-  renderCal();
-
   const windowStart = new Date(monday);
   windowStart.setHours(0, 0, 0, 0);
   const windowEnd = new Date(windowStart);
   windowEnd.setDate(windowEnd.getDate() + 7);
+  const windowKey = windowStart.getTime();
+  const keepCurrentView = syncHealthy && syncedWindowStart === windowKey;
+
+  if (!keepCurrentView) {
+    syncHealthy = false;
+    busy = [];
+    renderCal();
+  }
+  setSyncStatus(keepCurrentView ? 'Atualizando… horários continuam disponíveis' : 'Sincronizando…', null);
+  const btn = document.getElementById('btnRefresh');
+  if (btn) btn.style.opacity = '0.4';
 
   try {
     const data = await loadBridge({ action: 'busy', start: windowStart.getTime(), end: windowEnd.getTime() });
@@ -532,12 +537,19 @@ async function syncGcal() {
       .map(item => ({ start: new Date(Number(item.start)), end: new Date(Number(item.end)) }))
       .filter(item => !isNaN(item.start) && !isNaN(item.end) && item.end > item.start);
     syncHealthy = true;
+    syncedWindowStart = windowKey;
     setSyncStatus(`Sincronizado — Google: ${data.googleCount || 0}, ClickUp: ${data.clickupCount || 0} + 30min de respiro`, true);
   } catch (error) {
     if (requestNumber !== syncRequestNumber) return;
-    busy = [];
-    syncHealthy = false;
-    setSyncStatus('Agenda temporariamente indisponível — nenhum horário pode ser reservado.', false);
+    if (keepCurrentView) {
+      syncHealthy = true;
+      setSyncStatus('Falha momentânea ao atualizar — mantendo os últimos horários sincronizados.', false);
+    } else {
+      busy = [];
+      syncHealthy = false;
+      syncedWindowStart = null;
+      setSyncStatus('Agenda temporariamente indisponível — nenhum horário pode ser reservado.', false);
+    }
     console.error('sync:', error);
   } finally {
     if (requestNumber === syncRequestNumber) {
@@ -857,11 +869,11 @@ function renderCal() {
         const { bkKey, bk, isPrimary } = found;
         sl.className = 'slot booked';
         if (isPrimary) {
-          sl.innerHTML = `<div class="bname">${bk.name}</div><div class="blabel">Reservado</div>`;
+          sl.innerHTML = `<div class="bname">${bk.name}</div><div class="blabel">Reservado · cancelar</div>`;
         } else {
           sl.innerHTML = `<div class="bname" style="opacity:.45;font-size:10px">${bk.name}</div>`;
         }
-        sl.title = `${bk.name}${bk.note?' — '+bk.note:''}`;
+        sl.title = `${bk.name}${bk.note?' — '+bk.note:''} — Clique para cancelar`;
         const bkStart = new Date(bk.startTs !== undefined ? bk.startTs : new Date(bkKey).getTime());
         sl.onclick = () => askCancel(bkKey, bk, bkStart);
       } else if (oc || !syncHealthy || past) {
@@ -983,7 +995,14 @@ async function confirmBook() {
     if (!result.ok) throw new Error(result.error || 'Não foi possível criar a reserva.');
 
     const bks = getBookings();
-    bks[k] = { name, note, startTs: pending.getTime(), endTs: endD.getTime() };
+    bks[k] = {
+      name,
+      note,
+      startTs: pending.getTime(),
+      endTs: endD.getTime(),
+      calendarEventId: result.calendarEventId || '',
+      clickupTaskId: result.clickupTaskId || ''
+    };
     setBookings(bks);
 
     // WhatsApp link
@@ -1009,10 +1028,35 @@ async function confirmBook() {
 
 function closeDone() { document.getElementById('doneOverlay').style.display = 'none'; }
 
-function askCancel(k, bk, date) {
+async function askCancel(k, bk, date) {
   const endD = bk.endTs ? new Date(bk.endTs) : new Date(date.getTime() + 1800000);
-  if (confirm(`Cancelar a reserva de "${bk.name}" em ${fmt(date)} das ${fmtH(date)} às ${fmtH(endD)}?`)) {
-    const bks = getBookings(); delete bks[k]; setBookings(bks); renderCal();
+  if (!confirm(`Cancelar a reserva de "${bk.name}" em ${fmt(date)} das ${fmtH(date)} às ${fmtH(endD)}?\n\nEla será removida do Google Agenda e do ClickUp.`)) return;
+
+  const requestId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  try {
+    setSyncStatus('Cancelando reserva…', null);
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'cancel', requestId, name: bk.name,
+        start: date.getTime(), end: endD.getTime(),
+        calendarEventId: bk.calendarEventId || '',
+        clickupTaskId: bk.clickupTaskId || ''
+      })
+    });
+    const result = await waitBookingResult(requestId);
+    if (!result.ok) throw new Error(result.error || 'Não foi possível cancelar a reserva.');
+
+    const bks = getBookings();
+    delete bks[k];
+    setBookings(bks);
+    await syncGcal();
+    alert('Reserva cancelada no Google Agenda e no ClickUp.');
+  } catch (error) {
+    alert(error.message || 'Não foi possível cancelar a reserva.');
+    await syncGcal();
   }
 }
 
@@ -1040,7 +1084,7 @@ function saveSettings() {
 window.addEventListener('DOMContentLoaded', () => {
   renderCal();
   syncGcal();
-  setInterval(syncGcal, 60*1000); // resync a cada 1 minuto
+  setInterval(syncGcal, 5*60*1000); // resync a cada 5 minutos sem piscar a grade
 });
 </script>
 </body>
