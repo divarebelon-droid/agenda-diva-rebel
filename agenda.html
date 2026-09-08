@@ -494,9 +494,7 @@ function loadBridge(params, timeoutMs = 20000) {
       error ? reject(error) : resolve(value);
     }
     function receive(event) {
-      const googleOrigin = event.origin === 'null' || event.origin === 'https://script.google.com' ||
-        /^https:\/\/[^/]+\.googleusercontent\.com$/.test(event.origin);
-      if (!googleOrigin || event.data?.source !== 'agenda-aline') return;
+      if (event.data?.source !== 'agenda-aline') return;
       finish(null, event.data.payload);
     }
 
