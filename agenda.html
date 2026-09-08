@@ -479,29 +479,33 @@ function goToday() { monday=getMonday(new Date()); syncGcal(); }
 // ═══════════════════════════════════════════
 let syncRequestNumber = 0;
 
-function loadJsonp(params, timeoutMs = 20000) {
+function loadBridge(params, timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
-    const callback = `__agendaCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const script = document.createElement('script');
+    const iframe = document.createElement('iframe');
     const timeout = setTimeout(() => finish(new Error('Tempo limite de sincronização excedido.')), timeoutMs);
 
     function cleanup() {
       clearTimeout(timeout);
-      delete window[callback];
-      script.remove();
+      window.removeEventListener('message', receive);
+      iframe.remove();
     }
     function finish(error, value) {
       cleanup();
       error ? reject(error) : resolve(value);
     }
-
-    window[callback] = data => finish(null, data);
-    script.onerror = () => finish(new Error('Não foi possível acessar o servidor da agenda.'));
+    function receive(event) {
+      if (event.source !== iframe.contentWindow || event.data?.source !== 'agenda-aline') return;
+      finish(null, event.data.payload);
+    }
 
     const url = new URL(WEBHOOK_URL);
-    Object.entries({ ...params, callback, _: Date.now() }).forEach(([key, value]) => url.searchParams.set(key, value));
-    script.src = url.toString();
-    document.head.appendChild(script);
+    Object.entries({ ...params, bridge: '1', _: Date.now() }).forEach(([key, value]) => url.searchParams.set(key, value));
+    iframe.hidden = true;
+    iframe.setAttribute('credentialless', '');
+    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.src = url.toString();
+    window.addEventListener('message', receive);
+    document.body.appendChild(iframe);
   });
 }
 
@@ -520,7 +524,7 @@ async function syncGcal() {
   windowEnd.setDate(windowEnd.getDate() + 7);
 
   try {
-    const data = await loadJsonp({ action: 'busy', start: windowStart.getTime(), end: windowEnd.getTime() });
+    const data = await loadBridge({ action: 'busy', start: windowStart.getTime(), end: windowEnd.getTime() });
     if (requestNumber !== syncRequestNumber) return;
     if (!data || !data.ok || !Array.isArray(data.busy)) throw new Error(data?.error || 'Resposta inválida do servidor.');
 
@@ -928,7 +932,7 @@ const wait = milliseconds => new Promise(resolve => setTimeout(resolve, millisec
 
 async function waitBookingResult(requestId) {
   for (let attempt = 0; attempt < 12; attempt++) {
-    const result = await loadJsonp({ action: 'result', id: requestId }, 10000);
+    const result = await loadBridge({ action: 'result', id: requestId }, 10000);
     if (!result.pending) return result;
     await wait(750);
   }
