@@ -494,7 +494,7 @@ function loadBridge(params, timeoutMs = 20000) {
       error ? reject(error) : resolve(value);
     }
     function receive(event) {
-      const googleOrigin = event.origin === 'https://script.google.com' ||
+      const googleOrigin = event.origin === 'null' || event.origin === 'https://script.google.com' ||
         /^https:\/\/[^/]+\.googleusercontent\.com$/.test(event.origin);
       if (!googleOrigin || event.data?.source !== 'agenda-aline') return;
       finish(null, event.data.payload);
@@ -504,7 +504,7 @@ function loadBridge(params, timeoutMs = 20000) {
     Object.entries({ ...params, bridge: '1', _: Date.now() }).forEach(([key, value]) => url.searchParams.set(key, value));
     iframe.hidden = true;
     iframe.setAttribute('credentialless', '');
-    iframe.setAttribute('sandbox', 'allow-scripts');
+    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
     iframe.src = url.toString();
     window.addEventListener('message', receive);
     document.body.appendChild(iframe);
